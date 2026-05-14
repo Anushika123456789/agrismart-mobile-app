@@ -3,7 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // IMPORTANT: Change this to your computer's local IP address (e.g. 192.168.x.x) 
 // so your mobile phone can connect to the backend server.
-const API_URL = 'https://agrismart-mobile-app-production.up.railway.app/api';
+const API_URL = '';
 
 const api = axios.create({
   baseURL: API_URL,
