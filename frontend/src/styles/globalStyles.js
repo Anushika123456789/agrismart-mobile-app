@@ -1,5 +1,5 @@
-import { StyleSheet } from 'react-native';
-import { colors, spacing, borderRadius, typography } from './colors';
+import { StyleSheet, Platform } from 'react-native';
+import { colors, spacing, borderRadius, typography, shadows } from './colors';
 
 export const globalStyles = StyleSheet.create({
   // Container Styles
@@ -15,91 +15,149 @@ export const globalStyles = StyleSheet.create({
     flexGrow: 1,
     padding: spacing.lg,
   },
+  safeArea: {
+    flex: 1,
+    backgroundColor: colors.primary,
+  },
   
-  // Header Styles
+  // Modern Header Styles
   header: {
     backgroundColor: colors.primary,
-    paddingTop: spacing.xxxl,
+    paddingTop: Platform.OS === 'ios' ? 56 : 48,
+    paddingBottom: spacing.xl,
+    paddingHorizontal: spacing.xl,
+    borderBottomLeftRadius: borderRadius.xxl,
+    borderBottomRightRadius: borderRadius.xxl,
+  },
+  headerFlat: {
+    backgroundColor: colors.primary,
+    paddingTop: Platform.OS === 'ios' ? 56 : 48,
     paddingBottom: spacing.lg,
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: spacing.xl,
   },
   headerTitle: {
-    ...typography.h3,
+    ...typography.h2,
     color: colors.textLight,
+    marginBottom: spacing.xs,
   },
   headerSubtitle: {
     ...typography.bodySmall,
     color: colors.primaryLighter,
-    marginTop: spacing.xs,
+    opacity: 0.9,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   
-  // Card Styles
+  // Modern Card Styles
   card: {
     backgroundColor: colors.cardBackground,
-    borderRadius: borderRadius.md,
+    borderRadius: borderRadius.lg,
     padding: spacing.lg,
     marginHorizontal: spacing.lg,
     marginVertical: spacing.sm,
-    shadowColor: colors.black,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    ...shadows.md,
+    borderWidth: 1,
+    borderColor: colors.lightGray,
+  },
+  cardCompact: {
+    backgroundColor: colors.cardBackground,
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
+    marginHorizontal: spacing.lg,
+    marginVertical: spacing.xs,
+    ...shadows.sm,
+    borderWidth: 1,
+    borderColor: colors.lightGray,
   },
   cardElevated: {
     backgroundColor: colors.cardBackground,
-    borderRadius: borderRadius.md,
+    borderRadius: borderRadius.lg,
+    padding: spacing.xl,
+    marginHorizontal: spacing.lg,
+    marginVertical: spacing.sm,
+    ...shadows.lg,
+    borderWidth: 0,
+  },
+  cardInteractive: {
+    backgroundColor: colors.cardBackground,
+    borderRadius: borderRadius.lg,
     padding: spacing.lg,
     marginHorizontal: spacing.lg,
     marginVertical: spacing.sm,
-    shadowColor: colors.black,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    ...shadows.sm,
+    borderWidth: 1.5,
+    borderColor: colors.mediumGray,
   },
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  cardDivider: {
+    height: 1,
+    backgroundColor: colors.lightGray,
+    marginVertical: spacing.md,
   },
   
-  // Input Styles
+  // Modern Input Styles
   input: {
     backgroundColor: colors.inputBackground,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: colors.mediumGray,
-    borderRadius: borderRadius.sm,
+    borderRadius: borderRadius.md,
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    fontSize: 16,
-    color: '#212121',
+    paddingVertical: spacing.md + 2,
+    fontSize: 15,
+    color: colors.textPrimary,
     fontWeight: '500',
+    marginBottom: spacing.md,
   },
   inputFocused: {
     borderColor: colors.primary,
     borderWidth: 2,
+    backgroundColor: colors.inputBackgroundFocused,
   },
   inputError: {
     borderColor: colors.error,
-    borderWidth: 1,
+    borderWidth: 1.5,
+    backgroundColor: colors.errorLight,
   },
   inputLabel: {
-    ...typography.bodySmall,
+    ...typography.caption,
     color: colors.textSecondary,
     marginBottom: spacing.xs,
-    fontWeight: '500',
+    fontWeight: '600',
+  },
+  inputHelper: {
+    ...typography.caption,
+    color: colors.textTertiary,
+    marginTop: -spacing.sm,
+    marginBottom: spacing.md,
   },
   
-  // Button Styles
+  // Modern Button Styles
   buttonPrimary: {
     backgroundColor: colors.primary,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.md + 2,
+    paddingHorizontal: spacing.xxl,
     borderRadius: borderRadius.md,
     alignItems: 'center',
     justifyContent: 'center',
+    flexDirection: 'row',
+    ...shadows.sm,
+  },
+  buttonPrimaryLarge: {
+    backgroundColor: colors.primary,
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.xxl,
+    borderRadius: borderRadius.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...shadows.md,
   },
   buttonPrimaryText: {
     ...typography.button,
@@ -107,10 +165,11 @@ export const globalStyles = StyleSheet.create({
   },
   buttonSecondary: {
     backgroundColor: colors.secondary,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.md + 2,
+    paddingHorizontal: spacing.xxl,
     borderRadius: borderRadius.md,
     alignItems: 'center',
+    ...shadows.sm,
   },
   buttonSecondaryText: {
     ...typography.button,
@@ -118,10 +177,10 @@ export const globalStyles = StyleSheet.create({
   },
   buttonOutline: {
     backgroundColor: 'transparent',
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: colors.primary,
     paddingVertical: spacing.md,
-    paddingHorizontal: spacing.xl,
+    paddingHorizontal: spacing.xxl,
     borderRadius: borderRadius.md,
     alignItems: 'center',
   },
@@ -129,16 +188,41 @@ export const globalStyles = StyleSheet.create({
     ...typography.button,
     color: colors.primary,
   },
-  buttonDanger: {
-    backgroundColor: colors.error,
+  buttonGhost: {
+    backgroundColor: colors.primaryMuted,
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.xl,
     borderRadius: borderRadius.md,
     alignItems: 'center',
   },
+  buttonGhostText: {
+    ...typography.button,
+    color: colors.primary,
+  },
+  buttonDanger: {
+    backgroundColor: colors.error,
+    paddingVertical: spacing.md + 2,
+    paddingHorizontal: spacing.xxl,
+    borderRadius: borderRadius.md,
+    alignItems: 'center',
+    ...shadows.sm,
+  },
   buttonDangerText: {
     ...typography.button,
     color: colors.textLight,
+  },
+  buttonSmall: {
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    borderRadius: borderRadius.sm,
+  },
+  buttonIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.primaryMuted,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   
   // Text Styles
@@ -149,6 +233,10 @@ export const globalStyles = StyleSheet.create({
   textSecondary: {
     color: colors.textSecondary,
     ...typography.bodySmall,
+  },
+  textTertiary: {
+    color: colors.textTertiary,
+    ...typography.caption,
   },
   textHint: {
     color: colors.textHint,
@@ -167,52 +255,148 @@ export const globalStyles = StyleSheet.create({
     color: colors.textSecondary,
     marginBottom: spacing.md,
   },
+  sectionTitle: {
+    ...typography.h4,
+    color: colors.textPrimary,
+    marginBottom: spacing.md,
+    marginTop: spacing.lg,
+  },
   
-  // FAB (Floating Action Button)
+  // Badge Styles
+  badge: {
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.round,
+    alignSelf: 'flex-start',
+  },
+  badgeText: {
+    ...typography.overline,
+    fontSize: 10,
+  },
+  badgePrimary: {
+    backgroundColor: colors.primaryMuted,
+  },
+  badgePrimaryText: {
+    color: colors.primary,
+  },
+  badgeSuccess: {
+    backgroundColor: colors.successLight,
+  },
+  badgeSuccessText: {
+    color: colors.success,
+  },
+  badgeWarning: {
+    backgroundColor: colors.warningLight,
+  },
+  badgeWarningText: {
+    color: colors.warning,
+  },
+  badgeError: {
+    backgroundColor: colors.errorLight,
+  },
+  badgeErrorText: {
+    color: colors.error,
+  },
+  
+  // Modern FAB
   fab: {
     position: 'absolute',
-    bottom: spacing.xl,
+    bottom: spacing.xxl,
     right: spacing.xl,
     backgroundColor: colors.primary,
-    width: 56,
-    height: 56,
-    borderRadius: borderRadius.round,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: colors.black,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 5,
+    ...shadows.lg,
+  },
+  fabSmall: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
   },
   fabText: {
     fontSize: 28,
     color: colors.textLight,
-    fontWeight: 'bold',
+    fontWeight: '400',
+    marginTop: -2,
+  },
+  fabIcon: {
+    fontSize: 24,
+    color: colors.textLight,
   },
   
-  // Modal Styles
+  // Modern Modal Styles
   modalOverlay: {
     flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: colors.overlay,
+  },
+  modalOverlayCenter: {
+    flex: 1,
     justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    alignItems: 'center',
+    backgroundColor: colors.overlay,
   },
   modalContent: {
     backgroundColor: colors.white,
-    margin: spacing.xl,
+    borderTopLeftRadius: borderRadius.xxl,
+    borderTopRightRadius: borderRadius.xxl,
     padding: spacing.xl,
-    borderRadius: borderRadius.lg,
-    shadowColor: colors.black,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
+    paddingTop: spacing.md,
+    maxHeight: '92%',
+  },
+  modalContentCenter: {
+    backgroundColor: colors.white,
+    borderRadius: borderRadius.xl,
+    padding: spacing.xl,
+    margin: spacing.xl,
+    maxHeight: '85%',
+    width: '90%',
+    ...shadows.xl,
+  },
+  modalHandle: {
+    width: 40,
+    height: 4,
+    backgroundColor: colors.mediumGray,
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginBottom: spacing.lg,
   },
   modalTitle: {
     ...typography.h3,
-    color: colors.primary,
+    color: colors.textPrimary,
     textAlign: 'center',
     marginBottom: spacing.lg,
+  },
+  modalSection: {
+    marginBottom: spacing.lg,
+  },
+  modalSectionTitle: {
+    ...typography.overline,
+    color: colors.primary,
+    marginBottom: spacing.sm,
+  },
+  
+  // Chip/Pill Styles
+  chip: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.round,
+    backgroundColor: colors.lightGray,
+    marginRight: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  chipActive: {
+    backgroundColor: colors.primary,
+  },
+  chipText: {
+    ...typography.buttonSmall,
+    color: colors.textSecondary,
+  },
+  chipTextActive: {
+    color: colors.textLight,
   },
   
   // Utility Styles
@@ -225,6 +409,11 @@ export const globalStyles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+  rowWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+  },
   center: {
     justifyContent: 'center',
     alignItems: 'center',
@@ -232,6 +421,8 @@ export const globalStyles = StyleSheet.create({
   flex1: {
     flex: 1,
   },
+  
+  // Spacing utilities
   mb1: { marginBottom: spacing.xs },
   mb2: { marginBottom: spacing.sm },
   mb3: { marginBottom: spacing.md },
@@ -247,28 +438,33 @@ export const globalStyles = StyleSheet.create({
   p3: { padding: spacing.md },
   p4: { padding: spacing.lg },
   p5: { padding: spacing.xl },
+  ph: { paddingHorizontal: spacing.lg },
+  pv: { paddingVertical: spacing.md },
   
   // Empty State
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingTop: spacing.xxxl * 2,
+    paddingVertical: spacing.huge * 2,
+    paddingHorizontal: spacing.xl,
   },
   emptyIcon: {
     fontSize: 64,
     marginBottom: spacing.lg,
+    opacity: 0.8,
   },
-  emptyText: {
+  emptyTitle: {
     ...typography.h4,
     color: colors.textSecondary,
     textAlign: 'center',
+    marginBottom: spacing.sm,
   },
-  emptySubtext: {
-    ...typography.bodySmall,
-    color: colors.textHint,
+  emptyText: {
+    ...typography.body,
+    color: colors.textTertiary,
     textAlign: 'center',
-    marginTop: spacing.sm,
+    maxWidth: 280,
   },
   
   // Loading State
@@ -277,5 +473,64 @@ export const globalStyles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: colors.background,
+  },
+  loadingText: {
+    ...typography.body,
+    color: colors.textSecondary,
+    marginTop: spacing.md,
+  },
+  
+  // Divider
+  divider: {
+    height: 1,
+    backgroundColor: colors.lightGray,
+    marginVertical: spacing.md,
+  },
+  dividerThick: {
+    height: 8,
+    backgroundColor: colors.backgroundAlt,
+    marginVertical: spacing.lg,
+  },
+  
+  // Avatar
+  avatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: colors.primaryMuted,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: colors.white,
+  },
+  avatarLarge: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+  },
+  avatarText: {
+    ...typography.h4,
+    color: colors.primary,
+  },
+  
+  // Progress Bar
+  progressContainer: {
+    height: 8,
+    backgroundColor: colors.lightGray,
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: colors.primary,
+    borderRadius: 4,
+  },
+  
+  // Status indicator
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: spacing.sm,
   },
 });

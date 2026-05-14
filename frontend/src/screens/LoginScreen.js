@@ -8,15 +8,18 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  StatusBar,
+  StyleSheet,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { authService } from '../services/api';
-import { globalStyles, colors } from '../styles';
+import { colors, spacing, borderRadius, typography, shadows } from '../styles/colors';
 
 export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [focusedInput, setFocusedInput] = useState(null);
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -40,83 +43,190 @@ export default function LoginScreen({ navigation }) {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={globalStyles.container}
+      style={styles.container}
     >
+      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
+      
       <View style={styles.innerContainer}>
-        <Text style={styles.icon}>🌾</Text>
-        <Text style={styles.title}>AgriSmart</Text>
-        <Text style={styles.subtitle}>Farm Management System</Text>
+        {/* Logo Section */}
+        <View style={styles.logoContainer}>
+          <View style={styles.iconWrapper}>
+            <Text style={styles.icon}>🌾</Text>
+          </View>
+          <Text style={styles.title}>AgriSmart</Text>
+          <Text style={styles.subtitle}>Farm Management System</Text>
+        </View>
 
-        <TextInput placeholderTextColor="#666"
-          style={globalStyles.input}
-          placeholder="Email"
-          placeholderTextColor={colors.textHint}
-          value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
-          autoCapitalize="none"
-        />
+        {/* Form Section */}
+        <View style={styles.formContainer}>
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Email Address</Text>
+            <TextInput
+              style={[
+                styles.input,
+                focusedInput === 'email' && styles.inputFocused
+              ]}
+              placeholder="Enter your email"
+              placeholderTextColor={colors.textHint}
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              onFocus={() => setFocusedInput('email')}
+              onBlur={() => setFocusedInput(null)}
+            />
+          </View>
 
-        <TextInput placeholderTextColor="#666"
-          style={[globalStyles.input, styles.lastInput]}
-          placeholder="Password"
-          placeholderTextColor={colors.textHint}
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-        />
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Password</Text>
+            <TextInput
+              style={[
+                styles.input,
+                focusedInput === 'password' && styles.inputFocused
+              ]}
+              placeholder="Enter your password"
+              placeholderTextColor={colors.textHint}
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+              onFocus={() => setFocusedInput('password')}
+              onBlur={() => setFocusedInput(null)}
+            />
+          </View>
 
-        <TouchableOpacity
-          style={globalStyles.buttonPrimary}
-          onPress={handleLogin}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color={colors.white} />
-          ) : (
-            <Text style={globalStyles.buttonPrimaryText}>Login</Text>
-          )}
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.button, loading && styles.buttonDisabled]}
+            onPress={handleLogin}
+            disabled={loading}
+            activeOpacity={0.8}
+          >
+            {loading ? (
+              <ActivityIndicator color={colors.white} size="small" />
+            ) : (
+              <Text style={styles.buttonText}>Sign In</Text>
+            )}
+          </TouchableOpacity>
+        </View>
 
-        <TouchableOpacity onPress={() => navigation.navigate('Register')}>
-          <Text style={styles.registerLink}>Don't have an account? Register</Text>
-        </TouchableOpacity>
+        {/* Footer */}
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>Don&apos;t have an account?</Text>
+          <TouchableOpacity onPress={() => navigation.navigate('Register')} activeOpacity={0.7}>
+            <Text style={styles.registerLink}> Register Now</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </KeyboardAvoidingView>
   );
 }
 
-const styles = {
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
   innerContainer: {
     flex: 1,
     justifyContent: 'center',
-    paddingHorizontal: 25,
+    paddingHorizontal: spacing.xxl,
+  },
+  
+  // Logo Section
+  logoContainer: {
+    alignItems: 'center',
+    marginBottom: spacing.huge,
+  },
+  iconWrapper: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: colors.primaryMuted,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.lg,
+    ...shadows.md,
   },
   icon: {
-    fontSize: 60,
-    textAlign: 'center',
-    marginBottom: 10,
+    fontSize: 50,
   },
   title: {
-    fontSize: 36,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    color: '#2e7d32',
-    marginBottom: 8,
+    ...typography.display,
+    color: colors.primary,
+    marginBottom: spacing.xs,
   },
   subtitle: {
-    fontSize: 14,
-    textAlign: 'center',
-    color: '#666',
-    marginBottom: 40,
+    ...typography.body,
+    color: colors.textTertiary,
   },
-  lastInput: {
-    marginBottom: 20,
+  
+  // Form Section
+  formContainer: {
+    backgroundColor: colors.white,
+    borderRadius: borderRadius.xl,
+    padding: spacing.xl,
+    ...shadows.md,
+    borderWidth: 1,
+    borderColor: colors.lightGray,
   },
-  registerLink: {
-    textAlign: 'center',
-    marginTop: 20,
-    color: '#2e7d32',
+  inputGroup: {
+    marginBottom: spacing.lg,
+  },
+  label: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginBottom: spacing.sm,
+    fontWeight: '600',
+  },
+  input: {
+    backgroundColor: colors.inputBackground,
+    borderWidth: 1.5,
+    borderColor: colors.mediumGray,
+    borderRadius: borderRadius.md,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md + 2,
+    fontSize: 15,
+    color: colors.textPrimary,
+    fontWeight: '500',
+  },
+  inputFocused: {
+    borderColor: colors.primary,
+    borderWidth: 2,
+    backgroundColor: colors.inputBackgroundFocused,
+  },
+  
+  // Button
+  button: {
+    backgroundColor: colors.primary,
+    paddingVertical: spacing.md + 4,
+    borderRadius: borderRadius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: spacing.md,
+    ...shadows.sm,
+  },
+  buttonDisabled: {
+    backgroundColor: colors.primaryLight,
+  },
+  buttonText: {
+    ...typography.button,
+    color: colors.white,
     fontSize: 16,
   },
-};
+  
+  // Footer
+  footer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: spacing.xxl,
+  },
+  footerText: {
+    ...typography.body,
+    color: colors.textTertiary,
+  },
+  registerLink: {
+    ...typography.body,
+    color: colors.primary,
+    fontWeight: '600',
+  },
+});

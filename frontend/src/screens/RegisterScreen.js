@@ -9,9 +9,12 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  StatusBar,
+  StyleSheet,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { authService } from '../services/api';
+import { colors, spacing, borderRadius, typography, shadows } from '../styles/colors';
 
 export default function RegisterScreen({ navigation }) {
   const [name, setName] = useState('');
@@ -19,6 +22,7 @@ export default function RegisterScreen({ navigation }) {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [focusedInput, setFocusedInput] = useState(null);
 
   const validateForm = () => {
     const trimmedName = name.trim();
@@ -67,11 +71,7 @@ export default function RegisterScreen({ navigation }) {
         password: password.trim(),
       };
 
-      console.log('REGISTER PAYLOAD:', payload);
-
       const response = await authService.register(payload);
-
-      console.log('REGISTER SUCCESS:', response.data);
 
       await AsyncStorage.setItem('token', response.data.token);
       await AsyncStorage.setItem('user', JSON.stringify(response.data));
@@ -79,10 +79,6 @@ export default function RegisterScreen({ navigation }) {
       Alert.alert('Success', 'Account created successfully');
       navigation.replace('Main');
     } catch (error) {
-      console.log('REGISTER ERROR FULL:', error);
-      console.log('REGISTER ERROR RESPONSE:', error?.response?.data);
-      console.log('REGISTER ERROR MESSAGE:', error?.message);
-
       const message =
         error?.response?.data?.message ||
         error?.message ||
@@ -94,137 +90,216 @@ export default function RegisterScreen({ navigation }) {
     }
   };
 
+  const renderInput = (placeholder, value, onChangeText, key, options = {}) => (
+    <View style={styles.inputGroup}>
+      <Text style={styles.label}>{placeholder}</Text>
+      <TextInput
+        style={[
+          styles.input,
+          focusedInput === key && styles.inputFocused
+        ]}
+        placeholder={`Enter ${placeholder.toLowerCase()}`}
+        placeholderTextColor={colors.textHint}
+        value={value}
+        onChangeText={onChangeText}
+        onFocus={() => setFocusedInput(key)}
+        onBlur={() => setFocusedInput(null)}
+        {...options}
+      />
+    </View>
+  );
+
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.container}
     >
+      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
+      
       <ScrollView
         contentContainerStyle={styles.scrollContainer}
         keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.icon}>🌱</Text>
-        <Text style={styles.title}>Create Account</Text>
-        <Text style={styles.subtitle}>Join AgriSmart today</Text>
+        {/* Header */}
+        <View style={styles.headerContainer}>
+          <View style={styles.iconWrapper}>
+            <Text style={styles.icon}>🌱</Text>
+          </View>
+          <Text style={styles.title}>Create Account</Text>
+          <Text style={styles.subtitle}>Join AgriSmart and manage your farm efficiently</Text>
+        </View>
 
-        <TextInput placeholderTextColor="#666"
-          style={styles.input}
-          placeholder="Full Name"
-          placeholderTextColor="#999"
-          value={name}
-          onChangeText={setName}
-          autoCapitalize="words"
-        />
+        {/* Form */}
+        <View style={styles.formContainer}>
+          {renderInput('Full Name', name, setName, 'name', { autoCapitalize: 'words' })}
+          
+          {renderInput('Email Address', email, setEmail, 'email', {
+            keyboardType: 'email-address',
+            autoCapitalize: 'none',
+            autoCorrect: false,
+          })}
+          
+          {renderInput('Password', password, setPassword, 'password', {
+            secureTextEntry: true,
+            autoCapitalize: 'none',
+          })}
+          
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Confirm Password</Text>
+            <TextInput
+              style={[
+                styles.input,
+                focusedInput === 'confirmPassword' && styles.inputFocused
+              ]}
+              placeholder="Re-enter your password"
+              placeholderTextColor={colors.textHint}
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              secureTextEntry
+              autoCapitalize="none"
+              onFocus={() => setFocusedInput('confirmPassword')}
+              onBlur={() => setFocusedInput(null)}
+            />
+          </View>
 
-        <TextInput placeholderTextColor="#666"
-          style={styles.input}
-          placeholder="Email"
-          placeholderTextColor="#999"
-          value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
-          autoCapitalize="none"
-          autoCorrect={false}
-        />
+          <TouchableOpacity
+            style={[styles.registerButton, loading && styles.disabledButton]}
+            activeOpacity={0.8}
+            onPress={handleRegister}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color={colors.white} size="small" />
+            ) : (
+              <Text style={styles.registerButtonText}>Create Account</Text>
+            )}
+          </TouchableOpacity>
+        </View>
 
-        <TextInput placeholderTextColor="#666"
-          style={styles.input}
-          placeholder="Password (min 6 characters)"
-          placeholderTextColor="#999"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-          autoCapitalize="none"
-        />
-
-        <TextInput placeholderTextColor="#666"
-          style={styles.input}
-          placeholder="Confirm Password"
-          placeholderTextColor="#999"
-          value={confirmPassword}
-          onChangeText={setConfirmPassword}
-          secureTextEntry
-          autoCapitalize="none"
-        />
-
-        <TouchableOpacity
-          style={[styles.registerButton, loading && styles.disabledButton]}
-          activeOpacity={0.8}
-          onPress={handleRegister}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.registerButtonText}>Register</Text>
-          )}
-        </TouchableOpacity>
-
-        <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-          <Text style={styles.loginLink}>Already have an account? Login</Text>
-        </TouchableOpacity>
+        {/* Footer */}
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>Already have an account?</Text>
+          <TouchableOpacity onPress={() => navigation.navigate('Login')} activeOpacity={0.7}>
+            <Text style={styles.loginLink}> Sign In</Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
-const styles = {
+const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: colors.background,
   },
   scrollContainer: {
     flexGrow: 1,
     justifyContent: 'center',
-    paddingHorizontal: 25,
-    paddingVertical: 40,
+    paddingHorizontal: spacing.xxl,
+    paddingVertical: spacing.huge,
+  },
+  
+  // Header
+  headerContainer: {
+    alignItems: 'center',
+    marginBottom: spacing.xxl,
+  },
+  iconWrapper: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: colors.leafLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.lg,
+    ...shadows.md,
   },
   icon: {
-    fontSize: 50,
-    textAlign: 'center',
-    marginBottom: 10,
+    fontSize: 40,
   },
   title: {
-    fontSize: 32,
-    fontWeight: 'bold',
+    ...typography.h1,
+    color: colors.primary,
+    marginBottom: spacing.xs,
     textAlign: 'center',
-    color: '#2e7d32',
-    marginBottom: 8,
   },
   subtitle: {
-    fontSize: 14,
+    ...typography.body,
+    color: colors.textTertiary,
     textAlign: 'center',
-    color: '#666',
-    marginBottom: 30,
+    maxWidth: 280,
+  },
+  
+  // Form
+  formContainer: {
+    backgroundColor: colors.white,
+    borderRadius: borderRadius.xl,
+    padding: spacing.xl,
+    ...shadows.md,
+    borderWidth: 1,
+    borderColor: colors.lightGray,
+  },
+  inputGroup: {
+    marginBottom: spacing.md,
+  },
+  label: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginBottom: spacing.sm,
+    fontWeight: '600',
   },
   input: {
-    backgroundColor: '#fff',
-    padding: 15,
-    borderRadius: 12,
-    marginBottom: 15,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-    fontSize: 16,
+    backgroundColor: colors.inputBackground,
+    borderWidth: 1.5,
+    borderColor: colors.mediumGray,
+    borderRadius: borderRadius.md,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md + 2,
+    fontSize: 15,
+    color: colors.textPrimary,
+    fontWeight: '500',
   },
+  inputFocused: {
+    borderColor: colors.primary,
+    borderWidth: 2,
+    backgroundColor: colors.inputBackgroundFocused,
+  },
+  
+  // Button
   registerButton: {
-    backgroundColor: '#2e7d32',
-    padding: 16,
-    borderRadius: 12,
+    backgroundColor: colors.primary,
+    paddingVertical: spacing.md + 4,
+    borderRadius: borderRadius.md,
     alignItems: 'center',
-    marginTop: 10,
+    justifyContent: 'center',
+    marginTop: spacing.md,
+    ...shadows.sm,
   },
   disabledButton: {
-    opacity: 0.7,
+    backgroundColor: colors.primaryLight,
   },
   registerButtonText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  loginLink: {
-    textAlign: 'center',
-    marginTop: 20,
-    color: '#2e7d32',
+    ...typography.button,
+    color: colors.white,
     fontSize: 16,
   },
-};
+  
+  // Footer
+  footer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: spacing.xxl,
+  },
+  footerText: {
+    ...typography.body,
+    color: colors.textTertiary,
+  },
+  loginLink: {
+    ...typography.body,
+    color: colors.primary,
+    fontWeight: '600',
+  },
+});

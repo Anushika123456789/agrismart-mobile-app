@@ -11,10 +11,12 @@ import {
   ActivityIndicator,
   ScrollView,
   Platform,
+  StatusBar,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { machineryService, landService } from '../services/api';
+import { colors, spacing, borderRadius, typography, shadows } from '../styles/colors';
 
 export default function MachineryScreen() {
   const [machinery, setMachinery] = useState([]);
@@ -40,10 +42,10 @@ export default function MachineryScreen() {
   });
 
   const statuses = [
-    { label: 'Available', value: 'available', color: '#4caf50' },
-    { label: 'In Use', value: 'in-use', color: '#2196f3' },
-    { label: 'Repairs', value: 'under-repair', color: '#f44336' },
-    { label: 'Retired', value: 'decommissioned', color: '#9e9e9e' }
+    { label: 'Available', value: 'available', color: colors.success },
+    { label: 'In Use', value: 'in-use', color: colors.info },
+    { label: 'Repairs', value: 'under-repair', color: colors.error },
+    { label: 'Retired', value: 'decommissioned', color: colors.gray }
   ];
 
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -194,9 +196,18 @@ export default function MachineryScreen() {
     });
   };
 
-  const getStatusColor = (status) => {
+  const getStatusStyle = (status) => {
     const s = statuses.find(x => x.value === status);
-    return s ? s.color : '#9e9e9e';
+    return s ? s.color : colors.gray;
+  };
+
+  const getStatusBgStyle = (status) => {
+    switch(status) {
+      case 'available': return styles.statusAvailable;
+      case 'in-use': return styles.statusInUse;
+      case 'under-repair': return styles.statusRepair;
+      default: return styles.statusDecommissioned;
+    }
   };
 
   const renderItem = ({ item }) => {
@@ -208,40 +219,48 @@ export default function MachineryScreen() {
     return (
       <View style={styles.card}>
         <View style={styles.cardHeader}>
-          <View>
-            <Text style={styles.itemName}>{item.name}</Text>
-            <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}>
-              <Text style={styles.statusText}>{item.status.toUpperCase().replace('-', ' ')}</Text>
+          <View style={styles.headerLeft}>
+            <View style={styles.iconContainer}>
+              <Text style={styles.iconText}>🚜</Text>
             </View>
-            {item.landId && (
-              <View style={[styles.statusBadge, { backgroundColor: '#e3f2fd', marginLeft: 8 }]}>
-                <Text style={[styles.statusText, { color: '#1976d2' }]}>📍 {item.landId?.location || 'Assigned'}</Text>
+            <View style={styles.headerInfo}>
+              <Text style={styles.itemName}>{item.name}</Text>
+              <View style={styles.badgeRow}>
+                <View style={[styles.statusBadge, getStatusBgStyle(item.status)]}>
+                  <Text style={[styles.statusText, { color: getStatusStyle(item.status) === colors.gray ? colors.textTertiary : getStatusStyle(item.status) }]}>
+                    {item.status.toUpperCase().replace('-', ' ')}
+                  </Text>
+                </View>
+                {item.landId && (
+                  <View style={styles.landBadge}>
+                    <Text style={styles.landBadgeText}>{item.landId?.location || 'Assigned'}</Text>
+                  </View>
+                )}
               </View>
-            )}
+            </View>
           </View>
           <View style={styles.cardActions}>
-            <TouchableOpacity onPress={() => openEditModal(item)} style={styles.editButton}>
+            <TouchableOpacity onPress={() => openEditModal(item)} style={styles.actionButton} activeOpacity={0.7}>
               <Text style={styles.actionText}>✏️</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => deleteAsset(item._id, item.name)} style={styles.deleteButton}>
+            <TouchableOpacity onPress={() => deleteAsset(item._id, item.name)} style={styles.actionButton} activeOpacity={0.7}>
               <Text style={styles.actionText}>🗑️</Text>
             </TouchableOpacity>
           </View>
         </View>
 
-        <Text style={styles.cardDetail}>Model: {item.model || 'N/A'} | SN: {item.serialNumber || 'N/A'}</Text>
+        <Text style={styles.cardDetail}>Model: {item.model || 'N/A'} | Serial: {item.serialNumber || 'N/A'}</Text>
 
         <View style={styles.metricsContainer}>
           <View style={styles.metricBox}>
-            <Text style={styles.metricValue}>LKR {totalMaintenance.toFixed(2)}</Text>
-            <Text style={styles.metricLabel}>Lifetime Repairs</Text>
+            <Text style={styles.metricValue}>LKR {totalMaintenance.toLocaleString()}</Text>
+            <Text style={styles.metricLabel}>Repair Costs</Text>
           </View>
           <View style={styles.metricBox}>
             <Text style={styles.metricValue}>{lastService}</Text>
             <Text style={styles.metricLabel}>Last Service</Text>
           </View>
         </View>
-
       </View>
     );
   };
@@ -249,135 +268,210 @@ export default function MachineryScreen() {
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color="#2e7d32" />
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={styles.loadingText}>Loading equipment...</Text>
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
+      
       <FlatList
         data={machinery}
         keyExtractor={(item) => item._id}
         renderItem={renderItem}
-        contentContainerStyle={{ paddingBottom: 80 }}
+        contentContainerStyle={{ paddingBottom: 100, paddingTop: spacing.sm }}
+        showsVerticalScrollIndicator={false}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyIcon}>🚜</Text>
-            <Text style={styles.emptyText}>No equipment listed</Text>
+            <Text style={styles.emptyTitle}>No Equipment Listed</Text>
+            <Text style={styles.emptyText}>Add machinery using the + button</Text>
           </View>
         }
       />
 
-      <TouchableOpacity style={styles.fab} onPress={() => { setEditingItem(null); resetForm(); setModalVisible(true); }}>
+      <TouchableOpacity 
+        style={styles.fab} 
+        onPress={() => { setEditingItem(null); resetForm(); setModalVisible(true); }}
+        activeOpacity={0.8}
+      >
         <Text style={styles.fabText}>+</Text>
       </TouchableOpacity>
 
       <Modal animationType="slide" transparent visible={modalVisible}>
         <View style={styles.modalContainer}>
-          <ScrollView contentContainerStyle={styles.modalContent} showsVerticalScrollIndicator={false}>
-            <Text style={styles.modalTitle}>{editingItem ? 'Edit Asset' : 'Add Machinery'}</Text>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHandle} />
+            <Text style={styles.modalTitle}>{editingItem ? 'Edit Equipment' : 'Add Machinery'}</Text>
+            
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <Text style={styles.label}>Equipment Details</Text>
+              <TextInput 
+                placeholderTextColor={colors.textHint}
+                style={styles.input} 
+                placeholder="Machine Name" 
+                value={formData.name} 
+                onChangeText={(text) => setFormData({ ...formData, name: text })} 
+              />
 
-            <TextInput placeholderTextColor="#666" style={styles.input} placeholder="Machine Name" value={formData.name} onChangeText={(text) => setFormData({ ...formData, name: text })} />
-
-            <View style={styles.row}>
-              <TextInput placeholderTextColor="#666" style={[styles.input, { flex: 1, marginRight: 5 }]} placeholder="Model" value={formData.model} onChangeText={(text) => setFormData({ ...formData, model: text })} />
-              <TextInput placeholderTextColor="#666" style={[styles.input, { flex: 1, marginLeft: 5 }]} placeholder="Serial #" value={formData.serialNumber} onChangeText={(text) => setFormData({ ...formData, serialNumber: text })} />
-            </View>
-
-            <TextInput placeholderTextColor="#666" style={styles.input} placeholder="Purchase Price (LKR)" keyboardType="numeric" value={formData.purchasePrice.toString()} onChangeText={(text) => setFormData({ ...formData, purchasePrice: text.replace(/[^0-9.]/g, '') })} />
-
-            <Text style={styles.label}>Operational Status</Text>
-            <View style={styles.statusContainer}>
-              {statuses.map((s) => (
-                <TouchableOpacity
-                  key={s.value}
-                  style={[styles.statusOption, formData.status === s.value && { backgroundColor: s.color }]}
-                  onPress={() => setFormData({ ...formData, status: s.value })}
-                >
-                  <Text style={[styles.statusOptionText, formData.status === s.value && styles.statusOptionTextSelected]}>{s.label}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            <Text style={styles.label}>Primary Service Location (Land Plot)</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.landPillsContainer}>
-              {lands.map((land) => (
-                <TouchableOpacity
-                  key={land._id}
-                  style={[styles.landPill, formData.landId === land._id && styles.landPillSelected]}
-                  onPress={() => setFormData({ ...formData, landId: land._id })}
-                >
-                  <Text style={[styles.landPillText, formData.landId === land._id && styles.landPillTextSelected]}>{land.location}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-
-            <Text style={styles.labelHeader}>🛠 Maintenance & Fuel Logs</Text>
-            {formData.maintenanceHistory.map((log, index) => (
-              <View key={index} style={styles.logCard}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.logDesc}>{log.description}</Text>
-                  <Text style={styles.logSub}>LKR {log.cost} • {new Date(log.date).toLocaleDateString()}</Text>
-                </View>
-                <TouchableOpacity onPress={() => removeMaintenanceLog(index)}>
-                  <Text style={{ color: '#f44336', fontSize: 20 }}>✖</Text>
-                </TouchableOpacity>
-              </View>
-            ))}
-
-            <View style={styles.addLogBox}>
-              <TextInput placeholderTextColor="#999" style={styles.miniInput} placeholder="Repair / Fuel description" value={newLog.description} onChangeText={(t) => setNewLog({ ...newLog, description: t })} />
               <View style={styles.row}>
-                <TextInput placeholderTextColor="#999" style={[styles.miniInput, { flex: 1, marginRight: 5 }]} placeholder="Cost (LKR)" keyboardType="numeric" value={newLog.cost.toString()} onChangeText={(t) => setNewLog({ ...newLog, cost: t.replace(/[^0-9.]/g, '') })} />
-                <TouchableOpacity style={[styles.miniInput, { flex: 1, marginLeft: 5, justifyContent: 'center' }]} onPress={() => setShowDatePicker(true)}>
-                   <Text style={{ color: newLog.date ? '#212121' : '#999', fontSize: 14 }}>
-                     {newLog.date ? newLog.date : 'Select Date'}
-                   </Text>
+                <TextInput 
+                  placeholderTextColor={colors.textHint}
+                  style={[styles.input, { flex: 1, marginRight: spacing.sm }]} 
+                  placeholder="Model" 
+                  value={formData.model} 
+                  onChangeText={(text) => setFormData({ ...formData, model: text })} 
+                />
+                <TextInput 
+                  placeholderTextColor={colors.textHint}
+                  style={[styles.input, { flex: 1 }]} 
+                  placeholder="Serial #" 
+                  value={formData.serialNumber} 
+                  onChangeText={(text) => setFormData({ ...formData, serialNumber: text })} 
+                />
+              </View>
+
+              <TextInput 
+                placeholderTextColor={colors.textHint}
+                style={styles.input} 
+                placeholder="Purchase Price (LKR)" 
+                keyboardType="numeric" 
+                value={formData.purchasePrice.toString()} 
+                onChangeText={(text) => setFormData({ ...formData, purchasePrice: text.replace(/[^0-9.]/g, '') })} 
+              />
+
+              <Text style={styles.label}>Operational Status</Text>
+              <View style={styles.statusContainer}>
+                {statuses.map((s) => (
+                  <TouchableOpacity
+                    key={s.value}
+                    style={[styles.statusOption, formData.status === s.value && { backgroundColor: s.color }]}
+                    onPress={() => setFormData({ ...formData, status: s.value })}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[styles.statusOptionText, formData.status === s.value && styles.statusOptionTextSelected]}>
+                      {s.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {lands.length > 0 && (
+                <>
+                  <Text style={styles.label}>Service Location</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.landPillsContainer}>
+                    {lands.map((land) => (
+                      <TouchableOpacity
+                        key={land._id}
+                        style={[styles.landPill, formData.landId === land._id && styles.landPillSelected]}
+                        onPress={() => setFormData({ ...formData, landId: land._id })}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={[styles.landPillText, formData.landId === land._id && styles.landPillTextSelected]}>
+                          {land.location}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </>
+              )}
+
+              <Text style={styles.labelHeader}>Maintenance Logs</Text>
+              {formData.maintenanceHistory.map((log, index) => (
+                <View key={index} style={styles.logCard}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.logDesc}>{log.description}</Text>
+                    <Text style={styles.logSub}>LKR {log.cost} | {new Date(log.date).toLocaleDateString()}</Text>
+                  </View>
+                  <TouchableOpacity onPress={() => removeMaintenanceLog(index)} activeOpacity={0.7}>
+                    <Text style={styles.removeLogIcon}>✕</Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
+
+              <View style={styles.addLogBox}>
+                <TextInput 
+                  placeholderTextColor={colors.textHint}
+                  style={styles.miniInput} 
+                  placeholder="Repair / Fuel description" 
+                  value={newLog.description} 
+                  onChangeText={(t) => setNewLog({ ...newLog, description: t })} 
+                />
+                <View style={styles.row}>
+                  <TextInput 
+                    placeholderTextColor={colors.textHint}
+                    style={[styles.miniInput, { flex: 1, marginRight: spacing.sm }]} 
+                    placeholder="Cost (LKR)" 
+                    keyboardType="numeric" 
+                    value={newLog.cost.toString()} 
+                    onChangeText={(t) => setNewLog({ ...newLog, cost: t.replace(/[^0-9.]/g, '') })} 
+                  />
+                  <TouchableOpacity 
+                    style={[styles.miniInput, { flex: 1, justifyContent: 'center' }]} 
+                    onPress={() => setShowDatePicker(true)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={{ color: newLog.date ? colors.textPrimary : colors.textHint, fontSize: 14 }}>
+                      {newLog.date ? newLog.date : 'Select Date'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+                <TouchableOpacity style={styles.addLogBtn} onPress={addMaintenanceLog} activeOpacity={0.7}>
+                  <Text style={styles.addLogBtnText}>+ Add Log Entry</Text>
                 </TouchableOpacity>
               </View>
-              <TouchableOpacity style={styles.addLogBtn} onPress={addMaintenanceLog}>
-                <Text style={{ color: '#fff', fontWeight: 'bold' }}>+ Save Log Entry</Text>
-              </TouchableOpacity>
-            </View>
 
-            {showDatePicker && (
-               <View style={{ backgroundColor: '#1e1e1e', padding: 12, borderRadius: 12, marginVertical: 10, borderWidth: 1, borderColor: '#333', elevation: 4 }}>
-                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, borderBottomWidth: 1, borderBottomColor: '#333', paddingBottom: 8 }}>
-                    <Text style={{ fontWeight: 'bold', color: '#81c784', fontSize: 15 }}>📅 Select Maintenance Date</Text>
-                    <TouchableOpacity onPress={() => setShowDatePicker(false)} style={{ backgroundColor: '#2e7d32', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6 }}>
-                       <Text style={{ color: '#fff', fontWeight: 'bold' }}>Done</Text>
+              {showDatePicker && (
+                <View style={styles.datePickerContainer}>
+                  <View style={styles.datePickerHeader}>
+                    <Text style={styles.datePickerTitle}>Select Date</Text>
+                    <TouchableOpacity 
+                      onPress={() => setShowDatePicker(false)} 
+                      style={styles.datePickerDoneBtn}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.datePickerDoneText}>Done</Text>
                     </TouchableOpacity>
-                 </View>
-                 <DateTimePicker
-                   value={newLog.date ? new Date(newLog.date) : new Date()}
-                   mode="date"
-                   display={Platform.OS === 'ios' ? 'inline' : 'default'}
-                   style={{ height: Platform.OS === 'ios' ? 320 : undefined }}
-                   textColor="#ffffff"
-                   accentColor="#4caf50"
-                   themeVariant="dark"
-                   onChange={(e, val) => {
-                     if (Platform.OS === 'android') {
-                       setShowDatePicker(false);
-                     }
-                     if (val) {
-                       setNewLog({ ...newLog, date: val.toISOString().split('T')[0] });
-                     }
-                   }}
-                 />
-               </View>
-            )}
+                  </View>
+                  <DateTimePicker
+                    value={newLog.date ? new Date(newLog.date) : new Date()}
+                    mode="date"
+                    display={Platform.OS === 'ios' ? 'inline' : 'default'}
+                    themeVariant="light"
+                    accentColor={colors.primary}
+                    onChange={(e, val) => {
+                      if (Platform.OS === 'android') {
+                        setShowDatePicker(false);
+                      }
+                      if (val) {
+                        setNewLog({ ...newLog, date: val.toISOString().split('T')[0] });
+                      }
+                    }}
+                  />
+                </View>
+              )}
 
-            <View style={styles.modalButtons}>
-              <TouchableOpacity style={[styles.button, styles.cancelButton]} onPress={() => { setModalVisible(false); }}>
-                <Text style={styles.buttonText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.button, styles.saveButton]} onPress={editingItem ? updateAsset : createAsset}>
-                <Text style={styles.buttonText}>{editingItem ? 'Update' : 'Save'}</Text>
-              </TouchableOpacity>
-            </View>
-          </ScrollView>
+              <View style={styles.modalButtons}>
+                <TouchableOpacity 
+                  style={[styles.button, styles.cancelButton]} 
+                  onPress={() => setModalVisible(false)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={[styles.button, styles.saveButton]} 
+                  onPress={editingItem ? updateAsset : createAsset}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.buttonText}>{editingItem ? 'Update' : 'Save'}</Text>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+          </View>
         </View>
       </Modal>
     </View>
@@ -385,61 +479,410 @@ export default function MachineryScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f5f5f5' },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  card: { backgroundColor: '#fff', margin: 10, padding: 15, borderRadius: 12, elevation: 2 },
-  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  itemName: { fontSize: 18, fontWeight: 'bold', color: '#333' },
-  statusBadge: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12, marginTop: 5, alignSelf: 'flex-start' },
-  statusText: { color: '#fff', fontSize: 12, fontWeight: 'bold' },
-  cardActions: { flexDirection: 'row' },
-  editButton: { padding: 5, marginRight: 10 },
-  deleteButton: { padding: 5 },
-  actionText: { fontSize: 18 },
-  cardDetail: { fontSize: 13, color: '#666', marginTop: 10 },
+  container: { 
+    flex: 1, 
+    backgroundColor: colors.background,
+  },
+  center: { 
+    flex: 1, 
+    justifyContent: 'center', 
+    alignItems: 'center',
+    backgroundColor: colors.background,
+  },
+  loadingText: {
+    ...typography.body,
+    color: colors.textTertiary,
+    marginTop: spacing.md,
+  },
+  
+  // Card
+  card: { 
+    backgroundColor: colors.white, 
+    marginHorizontal: spacing.lg, 
+    marginVertical: spacing.sm, 
+    padding: spacing.lg, 
+    borderRadius: borderRadius.lg, 
+    ...shadows.sm,
+    borderWidth: 1,
+    borderColor: colors.lightGray,
+  },
+  cardHeader: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'flex-start',
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    flex: 1,
+  },
+  iconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.accentLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.md,
+  },
+  iconText: {
+    fontSize: 24,
+  },
+  headerInfo: {
+    flex: 1,
+  },
+  itemName: { 
+    ...typography.h4, 
+    color: colors.textPrimary,
+  },
+  badgeRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginTop: spacing.xs,
+    gap: spacing.xs,
+  },
+  statusBadge: { 
+    paddingHorizontal: spacing.sm, 
+    paddingVertical: spacing.xs, 
+    borderRadius: borderRadius.xs,
+  },
+  statusAvailable: {
+    backgroundColor: colors.successLight,
+  },
+  statusInUse: {
+    backgroundColor: colors.infoLight,
+  },
+  statusRepair: {
+    backgroundColor: colors.errorLight,
+  },
+  statusDecommissioned: {
+    backgroundColor: colors.lightGray,
+  },
+  statusText: { 
+    ...typography.overline,
+    fontSize: 9,
+  },
+  landBadge: {
+    backgroundColor: colors.infoLight,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.xs,
+  },
+  landBadgeText: {
+    ...typography.overline,
+    fontSize: 9,
+    color: colors.info,
+  },
+  cardActions: { 
+    flexDirection: 'row',
+    gap: spacing.xs,
+  },
+  actionButton: { 
+    width: 36,
+    height: 36,
+    borderRadius: borderRadius.sm,
+    backgroundColor: colors.lightGray,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  actionText: { 
+    fontSize: 16,
+  },
+  cardDetail: { 
+    ...typography.bodySmall, 
+    color: colors.textTertiary, 
+    marginTop: spacing.md,
+    marginLeft: 60,
+  },
 
-  metricsContainer: { flexDirection: 'row', marginTop: 15, borderTopWidth: 1, borderTopColor: '#eee', paddingTop: 10 },
-  metricBox: { flex: 1, alignItems: 'center' },
-  metricValue: { fontSize: 16, fontWeight: 'bold', color: '#2e7d32' },
-  metricLabel: { fontSize: 12, color: '#666' },
+  // Metrics
+  metricsContainer: { 
+    flexDirection: 'row', 
+    marginTop: spacing.lg, 
+    paddingTop: spacing.md, 
+    borderTopWidth: 1, 
+    borderTopColor: colors.lightGray,
+    gap: spacing.sm,
+  },
+  metricBox: { 
+    flex: 1, 
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+    backgroundColor: colors.backgroundAlt,
+    borderRadius: borderRadius.sm,
+  },
+  metricValue: { 
+    ...typography.body, 
+    fontWeight: '600',
+    color: colors.primary,
+  },
+  metricLabel: { 
+    ...typography.caption, 
+    color: colors.textTertiary,
+    marginTop: spacing.xs,
+  },
 
-  emptyContainer: { alignItems: 'center', marginTop: 100 },
-  emptyIcon: { fontSize: 60, marginBottom: 20 },
-  emptyText: { fontSize: 18, color: '#999' },
-  fab: { position: 'absolute', bottom: 20, right: 20, backgroundColor: '#2e7d32', width: 56, height: 56, borderRadius: 28, justifyContent: 'center', alignItems: 'center', elevation: 5 },
-  fabText: { fontSize: 32, color: '#fff' },
+  // Empty State
+  emptyContainer: { 
+    alignItems: 'center', 
+    paddingVertical: spacing.huge * 2,
+    paddingHorizontal: spacing.xl,
+  },
+  emptyIcon: { 
+    fontSize: 64, 
+    marginBottom: spacing.lg,
+    opacity: 0.7,
+  },
+  emptyTitle: {
+    ...typography.h4,
+    color: colors.textSecondary,
+    marginBottom: spacing.sm,
+  },
+  emptyText: { 
+    ...typography.body, 
+    color: colors.textTertiary,
+    textAlign: 'center',
+  },
+  
+  // FAB
+  fab: { 
+    position: 'absolute', 
+    bottom: spacing.xxl, 
+    right: spacing.xl, 
+    backgroundColor: colors.primary, 
+    width: 60, 
+    height: 60, 
+    borderRadius: 30, 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    ...shadows.lg,
+  },
+  fabText: { 
+    fontSize: 28, 
+    color: colors.white,
+    marginTop: -2,
+  },
 
-  modalContainer: { flex: 1, justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.5)' },
-  modalContent: { backgroundColor: '#fff', margin: 20, padding: 20, borderRadius: 15, maxHeight: '90%' },
-  modalTitle: { fontSize: 24, fontWeight: 'bold', marginBottom: 20, textAlign: 'center', color: '#2e7d32' },
+  // Modal
+  modalContainer: { 
+    flex: 1, 
+    justifyContent: 'flex-end', 
+    backgroundColor: colors.overlay,
+  },
+  modalContent: { 
+    backgroundColor: colors.white, 
+    borderTopLeftRadius: borderRadius.xxl,
+    borderTopRightRadius: borderRadius.xxl,
+    padding: spacing.xl,
+    paddingTop: spacing.md,
+    maxHeight: '92%',
+  },
+  modalHandle: {
+    width: 40,
+    height: 4,
+    backgroundColor: colors.mediumGray,
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginBottom: spacing.lg,
+  },
+  modalTitle: { 
+    ...typography.h3, 
+    color: colors.textPrimary,
+    marginBottom: spacing.xl, 
+    textAlign: 'center',
+  },
 
-  row: { flexDirection: 'row' },
-  input: { borderWidth: 1, borderColor: '#ddd', padding: 12, borderRadius: 8, marginBottom: 12, fontSize: 16, color: '#212121', fontWeight: '500' },
-  label: { fontSize: 14, fontWeight: 'bold', color: '#333', marginBottom: 8, marginTop: 8 },
-  labelHeader: { fontSize: 18, fontWeight: 'bold', color: '#2196f3', marginTop: 20, marginBottom: 10 },
+  // Form
+  row: { 
+    flexDirection: 'row',
+  },
+  input: { 
+    borderWidth: 1.5, 
+    borderColor: colors.mediumGray, 
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md + 2, 
+    borderRadius: borderRadius.md, 
+    marginBottom: spacing.md, 
+    fontSize: 15, 
+    color: colors.textPrimary, 
+    fontWeight: '500',
+    backgroundColor: colors.white,
+  },
+  label: { 
+    ...typography.overline, 
+    color: colors.primary, 
+    marginBottom: spacing.sm, 
+    marginTop: spacing.md,
+  },
+  labelHeader: { 
+    ...typography.h5, 
+    color: colors.info, 
+    marginTop: spacing.xl, 
+    marginBottom: spacing.md,
+  },
 
-  statusContainer: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 12 },
-  statusOption: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, backgroundColor: '#e0e0e0', margin: 4 },
-  statusOptionText: { fontSize: 12, color: '#333', fontWeight: 'bold' },
-  statusOptionTextSelected: { color: '#fff' },
+  statusContainer: { 
+    flexDirection: 'row', 
+    flexWrap: 'wrap', 
+    marginBottom: spacing.md,
+    gap: spacing.xs,
+  },
+  statusOption: { 
+    paddingHorizontal: spacing.md, 
+    paddingVertical: spacing.sm, 
+    borderRadius: borderRadius.round, 
+    backgroundColor: colors.lightGray,
+  },
+  statusOptionText: { 
+    ...typography.buttonSmall, 
+    color: colors.textSecondary,
+  },
+  statusOptionTextSelected: { 
+    color: colors.white,
+  },
 
-  logCard: { flexDirection: 'row', backgroundColor: '#f1f8e9', padding: 10, borderRadius: 8, marginBottom: 5, alignItems: 'center' },
-  logDesc: { fontSize: 14, fontWeight: 'bold', color: '#333' },
-  logSub: { fontSize: 12, color: '#555' },
+  // Maintenance Logs
+  logCard: { 
+    flexDirection: 'row', 
+    backgroundColor: colors.leafLight, 
+    padding: spacing.md, 
+    borderRadius: borderRadius.sm, 
+    marginBottom: spacing.sm, 
+    alignItems: 'center',
+  },
+  logDesc: { 
+    ...typography.body, 
+    fontWeight: '600',
+    color: colors.textPrimary,
+  },
+  logSub: { 
+    ...typography.caption, 
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+  removeLogIcon: {
+    fontSize: 18,
+    color: colors.error,
+    padding: spacing.xs,
+  },
 
-  landPillsContainer: { flexDirection: 'row', marginBottom: 15 },
-  landPill: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, backgroundColor: '#f0f0f0', marginRight: 8, height: 35, justifyContent: 'center' },
-  landPillSelected: { backgroundColor: '#2e7d32' },
-  landPillText: { fontSize: 12, color: '#666' },
-  landPillTextSelected: { color: '#fff', fontWeight: 'bold' },
+  // Land Pills
+  landPillsContainer: { 
+    flexDirection: 'row', 
+    marginBottom: spacing.md,
+  },
+  landPill: { 
+    paddingHorizontal: spacing.md, 
+    paddingVertical: spacing.sm, 
+    borderRadius: borderRadius.round, 
+    backgroundColor: colors.lightGray, 
+    marginRight: spacing.sm,
+  },
+  landPillSelected: { 
+    backgroundColor: colors.primary,
+  },
+  landPillText: { 
+    ...typography.buttonSmall, 
+    color: colors.textSecondary,
+  },
+  landPillTextSelected: { 
+    color: colors.white,
+  },
 
-  addLogBox: { backgroundColor: '#fafafa', padding: 10, borderRadius: 8, borderWidth: 1, borderColor: '#eee', marginTop: 10 },
-  miniInput: { borderWidth: 1, borderColor: '#ddd', padding: 8, borderRadius: 8, marginBottom: 10, fontSize: 14, color: '#212121' },
-  addLogBtn: { backgroundColor: '#2196f3', padding: 10, borderRadius: 8, alignItems: 'center' },
+  // Add Log Box
+  addLogBox: { 
+    backgroundColor: colors.backgroundAlt, 
+    padding: spacing.md, 
+    borderRadius: borderRadius.md, 
+    borderWidth: 1, 
+    borderColor: colors.lightGray, 
+    marginTop: spacing.sm,
+  },
+  miniInput: { 
+    borderWidth: 1.5, 
+    borderColor: colors.mediumGray, 
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm + 2, 
+    borderRadius: borderRadius.sm, 
+    marginBottom: spacing.sm, 
+    fontSize: 14, 
+    color: colors.textPrimary,
+    backgroundColor: colors.white,
+  },
+  addLogBtn: { 
+    backgroundColor: colors.info, 
+    paddingVertical: spacing.sm + 2, 
+    borderRadius: borderRadius.sm, 
+    alignItems: 'center',
+  },
+  addLogBtnText: {
+    ...typography.button,
+    color: colors.white,
+  },
 
-  modalButtons: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 30 },
-  button: { flex: 1, padding: 14, borderRadius: 8, marginHorizontal: 5, alignItems: 'center' },
-  cancelButton: { backgroundColor: '#999' },
-  saveButton: { backgroundColor: '#2e7d32' },
-  buttonText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
+  // Date Picker
+  datePickerContainer: {
+    backgroundColor: colors.white,
+    padding: spacing.md,
+    borderRadius: borderRadius.lg,
+    marginVertical: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.lightGray,
+    ...shadows.sm,
+  },
+  datePickerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+    paddingBottom: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.lightGray,
+  },
+  datePickerTitle: {
+    ...typography.body,
+    color: colors.primary,
+    fontWeight: '600',
+  },
+  datePickerDoneBtn: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.sm,
+  },
+  datePickerDoneText: {
+    ...typography.buttonSmall,
+    color: colors.white,
+  },
+
+  // Modal Buttons
+  modalButtons: { 
+    flexDirection: 'row', 
+    gap: spacing.md,
+    marginTop: spacing.xl,
+    paddingTop: spacing.lg,
+    borderTopWidth: 1,
+    borderTopColor: colors.lightGray,
+  },
+  button: { 
+    flex: 1, 
+    paddingVertical: spacing.md + 2, 
+    borderRadius: borderRadius.md, 
+    alignItems: 'center',
+  },
+  cancelButton: { 
+    backgroundColor: colors.lightGray,
+  },
+  saveButton: { 
+    backgroundColor: colors.primary,
+    ...shadows.sm,
+  },
+  buttonText: { 
+    ...typography.button, 
+    color: colors.white,
+  },
+  cancelButtonText: {
+    ...typography.button,
+    color: colors.textSecondary,
+  },
 });
