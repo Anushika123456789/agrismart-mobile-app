@@ -11,10 +11,12 @@ import {
   ActivityIndicator,
   ScrollView,
   Platform,
+  StatusBar,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { inventoryService, landService } from '../services/api';
+import { colors, spacing, borderRadius, typography, shadows } from '../styles/colors';
 
 export default function InventoryScreen() {
   const [items, setItems] = useState([]);
@@ -160,7 +162,6 @@ export default function InventoryScreen() {
 
   const updateQuantity = async (id, currentQuantity, change) => {
     const newQuantity = currentQuantity + change;
-    // Allow negative stock gracefully if requested
     try {
       await inventoryService.update(id, { quantity: newQuantity });
       fetchData();
@@ -200,8 +201,14 @@ export default function InventoryScreen() {
   };
 
   const getCategoryColor = (category) => {
-    const colors = { seed: '#4caf50', fertilizer: '#2196f3', pesticide: '#f44336', herbicide: '#ff9800', other: '#9c27b0' };
-    return colors[category] || '#999';
+    const colorMap = { 
+      seed: colors.leaf, 
+      fertilizer: colors.info, 
+      pesticide: colors.error, 
+      herbicide: colors.accent, 
+      other: colors.secondary 
+    };
+    return colorMap[category] || colors.gray;
   };
 
   const filteredItems = items.filter(item => {
@@ -219,55 +226,69 @@ export default function InventoryScreen() {
     return (
       <View style={[styles.card, isLowStock && styles.lowStockCard]}>
         <View style={styles.cardHeader}>
-          <View>
+          <View style={styles.cardHeaderLeft}>
             <Text style={styles.itemName}>{item.name}</Text>
             <View style={styles.badgeRow}>
               <View style={[styles.categoryBadge, { backgroundColor: getCategoryColor(item.category) }]}>
-                 <Text style={styles.categoryText}>{item.category.toUpperCase()}</Text>
+                <Text style={styles.categoryText}>{item.category.toUpperCase()}</Text>
               </View>
               {isExpired && (
-                <View style={[styles.categoryBadge, { backgroundColor: '#e53935' }]}>
-                   <Text style={styles.categoryText}>EXPIRED</Text>
+                <View style={[styles.categoryBadge, { backgroundColor: colors.error }]}>
+                  <Text style={styles.categoryText}>EXPIRED</Text>
                 </View>
               )}
               {item.landId && (
-                <View style={[styles.categoryBadge, { backgroundColor: '#e3f2fd' }]}>
-                   <Text style={[styles.categoryText, { color: '#1976d2' }]}>📍 {item.landId?.location || 'Assigned'}</Text>
+                <View style={[styles.categoryBadge, { backgroundColor: colors.infoLight }]}>
+                  <Text style={[styles.categoryText, { color: colors.info }]}>
+                    {item.landId?.location || 'Assigned'}
+                  </Text>
                 </View>
               )}
             </View>
           </View>
           <View style={styles.cardActions}>
-            <TouchableOpacity onPress={() => openEditModal(item)} style={styles.editButton}>
+            <TouchableOpacity onPress={() => openEditModal(item)} style={styles.actionButton} activeOpacity={0.7}>
               <Text style={styles.actionText}>✏️</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => deleteItem(item._id, item.name)} style={styles.deleteButton}>
+            <TouchableOpacity onPress={() => deleteItem(item._id, item.name)} style={styles.actionButton} activeOpacity={0.7}>
               <Text style={styles.actionText}>🗑️</Text>
             </TouchableOpacity>
           </View>
         </View>
 
         <View style={styles.quantitySection}>
-          <TouchableOpacity style={styles.quantityButton} onPress={() => updateQuantity(item._id, item.quantity, -1)}>
+          <TouchableOpacity 
+            style={styles.quantityButton} 
+            onPress={() => updateQuantity(item._id, item.quantity, -1)}
+            activeOpacity={0.7}
+          >
             <Text style={styles.quantityButtonText}>-</Text>
           </TouchableOpacity>
           <Text style={styles.quantityText}>{item.quantity} {item.unit}</Text>
-          <TouchableOpacity style={styles.quantityButton} onPress={() => updateQuantity(item._id, item.quantity, 1)}>
+          <TouchableOpacity 
+            style={styles.quantityButton} 
+            onPress={() => updateQuantity(item._id, item.quantity, 1)}
+            activeOpacity={0.7}
+          >
             <Text style={styles.quantityButtonText}>+</Text>
           </TouchableOpacity>
         </View>
 
         <View style={styles.trackingDetails}>
-          <Text style={styles.detailText}>Reorder Trigger: {item.reorderPoint} {item.unit}</Text>
+          <Text style={styles.detailText}>Reorder at: {item.reorderPoint} {item.unit}</Text>
           {item.supplier?.name && (
-            <Text style={styles.detailText}>Supplier: {item.supplier.name} ({item.supplier.contact || 'N/A'})</Text>
+            <Text style={styles.detailText}>Supplier: {item.supplier.name}</Text>
           )}
           {item.expiryDate && (
-             <Text style={styles.detailText}>Expires: {new Date(item.expiryDate).toLocaleDateString()}</Text>
+            <Text style={styles.detailText}>Expires: {new Date(item.expiryDate).toLocaleDateString()}</Text>
           )}
         </View>
 
-        {isLowStock && <Text style={styles.lowStockAlert}>🚨 LOW STOCK ALERT - REORDER SOON</Text>}
+        {isLowStock && (
+          <View style={styles.lowStockAlertContainer}>
+            <Text style={styles.lowStockAlert}>Low Stock - Reorder Soon</Text>
+          </View>
+        )}
       </View>
     );
   };
@@ -275,24 +296,28 @@ export default function InventoryScreen() {
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color="#2e7d32" />
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={styles.loadingText}>Loading inventory...</Text>
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      {/* Category Filter Bar */}
+      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
+      
+      {/* Filter Bar */}
       <View style={styles.filterContainer}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           {filterTabs.map((tab) => (
-             <TouchableOpacity 
-               key={tab} 
-               style={[styles.filterBtn, activeFilter === tab && styles.filterBtnActive]}
-               onPress={() => setActiveFilter(tab)}
-             >
-               <Text style={[styles.filterText, activeFilter === tab && styles.filterTextActive]}>{tab}</Text>
-             </TouchableOpacity>
+            <TouchableOpacity 
+              key={tab} 
+              style={[styles.filterBtn, activeFilter === tab && styles.filterBtnActive]}
+              onPress={() => setActiveFilter(tab)}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.filterText, activeFilter === tab && styles.filterTextActive]}>{tab}</Text>
+            </TouchableOpacity>
           ))}
         </ScrollView>
       </View>
@@ -301,104 +326,174 @@ export default function InventoryScreen() {
         data={filteredItems}
         keyExtractor={(item) => item._id}
         renderItem={renderItem}
-        contentContainerStyle={{ paddingBottom: 80 }}
+        contentContainerStyle={{ paddingBottom: 100, paddingTop: spacing.sm }}
+        showsVerticalScrollIndicator={false}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyIcon}>📦</Text>
-            <Text style={styles.emptyText}>No inventory matched criteria</Text>
+            <Text style={styles.emptyTitle}>No Items Found</Text>
+            <Text style={styles.emptyText}>Add inventory items using the + button below</Text>
           </View>
         }
       />
 
-      <TouchableOpacity style={styles.fab} onPress={() => { setEditingItem(null); resetForm(); setModalVisible(true); }}>
+      <TouchableOpacity 
+        style={styles.fab} 
+        onPress={() => { setEditingItem(null); resetForm(); setModalVisible(true); }}
+        activeOpacity={0.8}
+      >
         <Text style={styles.fabText}>+</Text>
       </TouchableOpacity>
 
       <Modal animationType="slide" transparent visible={modalVisible}>
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
+            <View style={styles.modalHandle} />
             <Text style={styles.modalTitle}>{editingItem ? 'Edit Item' : 'Add Inventory Item'}</Text>
+            
             <ScrollView showsVerticalScrollIndicator={false}>
-            
-            <Text style={styles.label}>General Details</Text>
-            <TextInput placeholderTextColor="#666" style={styles.input} placeholder="Item Name" value={formData.name} onChangeText={(text) => setFormData({ ...formData, name: text })} />
+              <Text style={styles.label}>Item Details</Text>
+              <TextInput 
+                placeholderTextColor={colors.textHint}
+                style={styles.input} 
+                placeholder="Item Name" 
+                value={formData.name} 
+                onChangeText={(text) => setFormData({ ...formData, name: text })} 
+              />
 
-            <View style={styles.categoryContainer}>
-              {categories.map((cat) => (
-                <TouchableOpacity key={cat.value} style={[styles.categoryOption, formData.category === cat.value && styles.categoryOptionSelected]} onPress={() => setFormData({ ...formData, category: cat.value })}>
-                  <Text style={[styles.categoryOptionText, formData.category === cat.value && styles.categoryOptionTextSelected]}>{cat.label}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+              <View style={styles.categoryContainer}>
+                {categories.map((cat) => (
+                  <TouchableOpacity 
+                    key={cat.value} 
+                    style={[styles.categoryOption, formData.category === cat.value && styles.categoryOptionSelected]} 
+                    onPress={() => setFormData({ ...formData, category: cat.value })}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[styles.categoryOptionText, formData.category === cat.value && styles.categoryOptionTextSelected]}>
+                      {cat.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
 
-            <View style={styles.row}>
-               <TextInput placeholderTextColor="#666" style={[styles.input, { flex: 1, marginRight: 5 }]} placeholder="Qty" keyboardType="numeric" value={formData.quantity.toString()} onChangeText={(text) => setFormData({ ...formData, quantity: text.replace(/[^0-9.]/g, '') })} />
-               <TextInput placeholderTextColor="#666" style={[styles.input, { flex: 1, marginLeft: 5 }]} placeholder="Unit (kg, L)" value={formData.unit} onChangeText={(text) => setFormData({ ...formData, unit: text })} />
-            </View>
+              <View style={styles.row}>
+                <TextInput 
+                  placeholderTextColor={colors.textHint}
+                  style={[styles.input, { flex: 1, marginRight: spacing.sm }]} 
+                  placeholder="Quantity" 
+                  keyboardType="numeric" 
+                  value={formData.quantity.toString()} 
+                  onChangeText={(text) => setFormData({ ...formData, quantity: text.replace(/[^0-9.]/g, '') })} 
+                />
+                <TextInput 
+                  placeholderTextColor={colors.textHint}
+                  style={[styles.input, { flex: 1 }]} 
+                  placeholder="Unit (kg, L)" 
+                  value={formData.unit} 
+                  onChangeText={(text) => setFormData({ ...formData, unit: text })} 
+                />
+              </View>
 
-            <Text style={styles.label}>Tracking & Reorder</Text>
-            <TextInput placeholderTextColor="#666" style={styles.input} placeholder="Low Stock Reorder Point (Minimum Qty)" keyboardType="numeric" value={formData.reorderPoint.toString()} onChangeText={(text) => setFormData({ ...formData, reorderPoint: text.replace(/[^0-9.]/g, '') })} />
-            
-            <TouchableOpacity style={styles.dateInput} onPress={() => setShowDatePicker(true)}>
-               <Text style={formData.expiryDate ? styles.dateText : styles.datePlaceholder}>
-                 {formData.expiryDate ? formData.expiryDate : 'Expiry Date (Optional)'}
-               </Text>
-            </TouchableOpacity>
-            
-            {showDatePicker && (
-               <View style={{ backgroundColor: '#1e1e1e', padding: 12, borderRadius: 12, marginVertical: 10, borderWidth: 1, borderColor: '#333', elevation: 4 }}>
-                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, borderBottomWidth: 1, borderBottomColor: '#333', paddingBottom: 8 }}>
-                    <Text style={{ fontWeight: 'bold', color: '#81c784', fontSize: 15 }}>📅 Set Expiry Date</Text>
-                    <TouchableOpacity onPress={() => setShowDatePicker(false)} style={{ backgroundColor: '#2e7d32', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6 }}>
-                       <Text style={{ color: '#fff', fontWeight: 'bold' }}>Done</Text>
+              <Text style={styles.label}>Stock Management</Text>
+              <TextInput 
+                placeholderTextColor={colors.textHint}
+                style={styles.input} 
+                placeholder="Low Stock Alert Point" 
+                keyboardType="numeric" 
+                value={formData.reorderPoint.toString()} 
+                onChangeText={(text) => setFormData({ ...formData, reorderPoint: text.replace(/[^0-9.]/g, '') })} 
+              />
+              
+              <TouchableOpacity style={styles.dateInput} onPress={() => setShowDatePicker(true)} activeOpacity={0.7}>
+                <Text style={formData.expiryDate ? styles.dateText : styles.datePlaceholder}>
+                  {formData.expiryDate ? formData.expiryDate : 'Expiry Date (Optional)'}
+                </Text>
+              </TouchableOpacity>
+              
+              {showDatePicker && (
+                <View style={styles.datePickerContainer}>
+                  <View style={styles.datePickerHeader}>
+                    <Text style={styles.datePickerTitle}>Select Expiry Date</Text>
+                    <TouchableOpacity 
+                      onPress={() => setShowDatePicker(false)} 
+                      style={styles.datePickerDoneBtn}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.datePickerDoneText}>Done</Text>
                     </TouchableOpacity>
-                 </View>
-                 <DateTimePicker
-                   value={formData.expiryDate ? new Date(formData.expiryDate) : new Date()}
-                   mode="date"
-                   display={Platform.OS === 'ios' ? 'inline' : 'default'}
-                   style={{ height: Platform.OS === 'ios' ? 320 : undefined }}
-                   textColor="#ffffff"
-                   accentColor="#4caf50"
-                   themeVariant="dark"
-                   onChange={(e, val) => {
-                     if (Platform.OS === 'android') {
-                       setShowDatePicker(false);
-                     }
-                     if (val) {
-                       setFormData({ ...formData, expiryDate: val.toISOString().split('T')[0] });
-                     }
-                   }}
-                 />
-               </View>
-            )}
+                  </View>
+                  <DateTimePicker
+                    value={formData.expiryDate ? new Date(formData.expiryDate) : new Date()}
+                    mode="date"
+                    display={Platform.OS === 'ios' ? 'inline' : 'default'}
+                    style={{ height: Platform.OS === 'ios' ? 320 : undefined }}
+                    themeVariant="light"
+                    accentColor={colors.primary}
+                    onChange={(e, val) => {
+                      if (Platform.OS === 'android') {
+                        setShowDatePicker(false);
+                      }
+                      if (val) {
+                        setFormData({ ...formData, expiryDate: val.toISOString().split('T')[0] });
+                      }
+                    }}
+                  />
+                </View>
+              )}
 
-            <Text style={styles.label}>Supplier Details</Text>
-            <TextInput placeholderTextColor="#666" style={styles.input} placeholder="Supplier Name" value={formData.supplierName} onChangeText={(text) => setFormData({ ...formData, supplierName: text })} />
-            <TextInput placeholderTextColor="#666" style={styles.input} placeholder="Supplier Contact Number" value={formData.supplierContact} onChangeText={(text) => setFormData({ ...formData, supplierContact: text })} keyboardType="phone-pad" />
+              <Text style={styles.label}>Supplier Details</Text>
+              <TextInput 
+                placeholderTextColor={colors.textHint}
+                style={styles.input} 
+                placeholder="Supplier Name" 
+                value={formData.supplierName} 
+                onChangeText={(text) => setFormData({ ...formData, supplierName: text })} 
+              />
+              <TextInput 
+                placeholderTextColor={colors.textHint}
+                style={styles.input} 
+                placeholder="Supplier Contact" 
+                value={formData.supplierContact} 
+                onChangeText={(text) => setFormData({ ...formData, supplierContact: text })} 
+                keyboardType="phone-pad" 
+              />
 
-            <Text style={styles.label}>Storage / Plot Location</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.landPillsContainer}>
-              {lands.map((land) => (
-                <TouchableOpacity
-                  key={land._id}
-                  style={[styles.landPill, formData.landId === land._id && styles.landPillSelected]}
-                  onPress={() => setFormData({ ...formData, landId: land._id })}
+              {lands.length > 0 && (
+                <>
+                  <Text style={styles.label}>Storage Location</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.landPillsContainer}>
+                    {lands.map((land) => (
+                      <TouchableOpacity
+                        key={land._id}
+                        style={[styles.landPill, formData.landId === land._id && styles.landPillSelected]}
+                        onPress={() => setFormData({ ...formData, landId: land._id })}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={[styles.landPillText, formData.landId === land._id && styles.landPillTextSelected]}>
+                          {land.location}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </>
+              )}
+
+              <View style={styles.modalButtons}>
+                <TouchableOpacity 
+                  style={[styles.button, styles.cancelButton]} 
+                  onPress={() => { setModalVisible(false); setEditingItem(null); resetForm(); }}
+                  activeOpacity={0.7}
                 >
-                  <Text style={[styles.landPillText, formData.landId === land._id && styles.landPillTextSelected]}>{land.location}</Text>
+                  <Text style={styles.cancelButtonText}>Cancel</Text>
                 </TouchableOpacity>
-              ))}
-            </ScrollView>
-
-            <View style={styles.modalButtons}>
-              <TouchableOpacity style={[styles.button, styles.cancelButton]} onPress={() => { setModalVisible(false); setEditingItem(null); resetForm(); }}>
-                <Text style={styles.buttonText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.button, styles.saveButton]} onPress={editingItem ? updateItem : createItem}>
-                <Text style={styles.buttonText}>{editingItem ? 'Update' : 'Save'}</Text>
-              </TouchableOpacity>
-            </View>
-            
+                <TouchableOpacity 
+                  style={[styles.button, styles.saveButton]} 
+                  onPress={editingItem ? updateItem : createItem}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.buttonText}>{editingItem ? 'Update' : 'Save'}</Text>
+                </TouchableOpacity>
+              </View>
             </ScrollView>
           </View>
         </View>
@@ -408,66 +503,383 @@ export default function InventoryScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f5f5f5' },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  filterContainer: { backgroundColor: '#fff', paddingVertical: 10, paddingHorizontal: 5, elevation: 2 },
-  filterBtn: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: '#e0e0e0', marginHorizontal: 5 },
-  filterBtnActive: { backgroundColor: '#2e7d32' },
-  filterText: { fontSize: 14, color: '#333', fontWeight: 'bold' },
-  filterTextActive: { color: '#fff' },
+  container: { 
+    flex: 1, 
+    backgroundColor: colors.background 
+  },
+  center: { 
+    flex: 1, 
+    justifyContent: 'center', 
+    alignItems: 'center',
+    backgroundColor: colors.background,
+  },
+  loadingText: {
+    ...typography.body,
+    color: colors.textTertiary,
+    marginTop: spacing.md,
+  },
   
-  card: { backgroundColor: '#fff', margin: 10, padding: 15, borderRadius: 12, elevation: 2 },
-  lowStockCard: { borderWidth: 2, borderColor: '#f44336', backgroundColor: '#ffebee' },
-  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  itemName: { fontSize: 18, fontWeight: 'bold', color: '#333' },
-  badgeRow: { flexDirection: 'row', alignItems: 'center' },
-  categoryBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10, marginTop: 5, marginRight: 5 },
-  categoryText: { color: '#fff', fontSize: 10, fontWeight: 'bold' },
-  cardActions: { flexDirection: 'row' },
-  editButton: { padding: 5, marginRight: 10 },
-  deleteButton: { padding: 5 },
-  actionText: { fontSize: 18 },
-  quantitySection: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 10 },
-  quantityButton: { backgroundColor: '#e0e0e0', width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center' },
-  quantityButtonText: { fontSize: 20, fontWeight: 'bold', color: '#333' },
-  quantityText: { fontSize: 20, fontWeight: 'bold', marginHorizontal: 20, color: '#2e7d32' },
+  // Filter Bar
+  filterContainer: { 
+    backgroundColor: colors.white, 
+    paddingVertical: spacing.md, 
+    paddingHorizontal: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.lightGray,
+  },
+  filterBtn: { 
+    paddingHorizontal: spacing.lg, 
+    paddingVertical: spacing.sm + 2, 
+    borderRadius: borderRadius.round, 
+    backgroundColor: colors.lightGray, 
+    marginHorizontal: spacing.xs,
+  },
+  filterBtnActive: { 
+    backgroundColor: colors.primary,
+  },
+  filterText: { 
+    ...typography.buttonSmall, 
+    color: colors.textSecondary,
+  },
+  filterTextActive: { 
+    color: colors.white,
+  },
   
-  trackingDetails: { marginTop: 15, paddingTop: 10, borderTopWidth: 1, borderTopColor: '#eee' },
-  detailText: { fontSize: 13, color: '#666', marginBottom: 2 },
+  // Cards
+  card: { 
+    backgroundColor: colors.white, 
+    marginHorizontal: spacing.lg, 
+    marginVertical: spacing.sm, 
+    padding: spacing.lg, 
+    borderRadius: borderRadius.lg, 
+    ...shadows.sm,
+    borderWidth: 1,
+    borderColor: colors.lightGray,
+  },
+  lowStockCard: { 
+    borderWidth: 2, 
+    borderColor: colors.error, 
+    backgroundColor: colors.errorLight,
+  },
+  cardHeader: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'flex-start',
+  },
+  cardHeaderLeft: {
+    flex: 1,
+  },
+  itemName: { 
+    ...typography.h4, 
+    color: colors.textPrimary,
+  },
+  badgeRow: { 
+    flexDirection: 'row', 
+    flexWrap: 'wrap',
+    marginTop: spacing.sm,
+    gap: spacing.xs,
+  },
+  categoryBadge: { 
+    paddingHorizontal: spacing.sm + 2, 
+    paddingVertical: spacing.xs, 
+    borderRadius: borderRadius.round,
+  },
+  categoryText: { 
+    ...typography.overline, 
+    color: colors.white, 
+    fontSize: 9,
+  },
+  cardActions: { 
+    flexDirection: 'row',
+    gap: spacing.xs,
+  },
+  actionButton: { 
+    width: 36,
+    height: 36,
+    borderRadius: borderRadius.sm,
+    backgroundColor: colors.lightGray,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  actionText: { 
+    fontSize: 16,
+  },
   
-  lowStockAlert: { fontSize: 14, color: '#d32f2f', marginTop: 10, textAlign: 'center', fontWeight: 'bold', padding: 5, backgroundColor: '#ffcdd2', borderRadius: 5 },
-  emptyContainer: { alignItems: 'center', marginTop: 100 },
-  emptyIcon: { fontSize: 60, marginBottom: 20 },
-  emptyText: { fontSize: 18, color: '#999' },
+  // Quantity Section
+  quantitySection: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    marginTop: spacing.lg,
+    paddingVertical: spacing.md,
+    backgroundColor: colors.backgroundAlt,
+    borderRadius: borderRadius.md,
+  },
+  quantityButton: { 
+    backgroundColor: colors.white, 
+    width: 44, 
+    height: 44, 
+    borderRadius: 22, 
+    justifyContent: 'center', 
+    alignItems: 'center',
+    ...shadows.sm,
+  },
+  quantityButtonText: { 
+    ...typography.h3, 
+    color: colors.textPrimary,
+  },
+  quantityText: { 
+    ...typography.h3, 
+    marginHorizontal: spacing.xxl, 
+    color: colors.primary,
+  },
   
-  fab: { position: 'absolute', bottom: 20, right: 20, backgroundColor: '#2e7d32', width: 56, height: 56, borderRadius: 28, justifyContent: 'center', alignItems: 'center', elevation: 5 },
-  fabText: { fontSize: 32, color: '#fff' },
+  // Tracking Details
+  trackingDetails: { 
+    marginTop: spacing.md, 
+    paddingTop: spacing.md, 
+    borderTopWidth: 1, 
+    borderTopColor: colors.lightGray,
+  },
+  detailText: { 
+    ...typography.bodySmall, 
+    color: colors.textTertiary, 
+    marginBottom: spacing.xs,
+  },
   
-  modalContainer: { flex: 1, justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.5)' },
-  modalContent: { backgroundColor: '#fff', margin: 20, padding: 20, borderRadius: 15, maxHeight: '90%' },
-  modalTitle: { fontSize: 24, fontWeight: 'bold', marginBottom: 20, textAlign: 'center', color: '#2e7d32' },
-  label: { fontSize: 14, fontWeight: 'bold', color: '#2e7d32', marginTop: 15, marginBottom: 5 },
-  input: { borderWidth: 1, borderColor: '#ddd', padding: 12, borderRadius: 8, marginBottom: 12, fontSize: 16, color: '#212121', fontWeight: '500' },
-  row: { flexDirection: 'row', justifyContent: 'space-between' },
-  categoryContainer: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 12 },
-  categoryOption: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, backgroundColor: '#e0e0e0', margin: 4 },
-  categoryOptionSelected: { backgroundColor: '#2e7d32' },
-  categoryOptionText: { fontSize: 12, color: '#333' },
-  categoryOptionTextSelected: { color: '#fff' },
+  // Alerts
+  lowStockAlertContainer: {
+    marginTop: spacing.md,
+    backgroundColor: 'rgba(231, 76, 60, 0.1)',
+    borderRadius: borderRadius.sm,
+    padding: spacing.sm,
+  },
+  lowStockAlert: { 
+    ...typography.buttonSmall, 
+    color: colors.error, 
+    textAlign: 'center',
+  },
   
-  dateInput: { borderWidth: 1, borderColor: '#ddd', padding: 12, borderRadius: 8, marginBottom: 12, backgroundColor: '#fafafa', justifyContent: 'center' },
-  dateText: { fontSize: 16, color: '#212121', fontWeight: '500' },
-  datePlaceholder: { fontSize: 16, color: '#666' },
+  // Empty State
+  emptyContainer: { 
+    alignItems: 'center', 
+    paddingVertical: spacing.huge * 2,
+    paddingHorizontal: spacing.xl,
+  },
+  emptyIcon: { 
+    fontSize: 64, 
+    marginBottom: spacing.lg,
+    opacity: 0.7,
+  },
+  emptyTitle: {
+    ...typography.h4,
+    color: colors.textSecondary,
+    marginBottom: spacing.sm,
+  },
+  emptyText: { 
+    ...typography.body, 
+    color: colors.textTertiary,
+    textAlign: 'center',
+  },
   
-  landPillsContainer: { flexDirection: 'row', marginBottom: 15 },
-  landPill: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, backgroundColor: '#f0f0f0', marginRight: 8, height: 35, justifyContent: 'center' },
-  landPillSelected: { backgroundColor: '#2e7d32' },
-  landPillText: { fontSize: 12, color: '#666' },
-  landPillTextSelected: { color: '#fff', fontWeight: 'bold' },
+  // FAB
+  fab: { 
+    position: 'absolute', 
+    bottom: spacing.xxl, 
+    right: spacing.xl, 
+    backgroundColor: colors.primary, 
+    width: 60, 
+    height: 60, 
+    borderRadius: 30, 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    ...shadows.lg,
+  },
+  fabText: { 
+    fontSize: 28, 
+    color: colors.white,
+    marginTop: -2,
+  },
+  
+  // Modal
+  modalContainer: { 
+    flex: 1, 
+    justifyContent: 'flex-end', 
+    backgroundColor: colors.overlay,
+  },
+  modalContent: { 
+    backgroundColor: colors.white, 
+    borderTopLeftRadius: borderRadius.xxl,
+    borderTopRightRadius: borderRadius.xxl,
+    padding: spacing.xl,
+    paddingTop: spacing.md,
+    maxHeight: '92%',
+  },
+  modalHandle: {
+    width: 40,
+    height: 4,
+    backgroundColor: colors.mediumGray,
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginBottom: spacing.lg,
+  },
+  modalTitle: { 
+    ...typography.h3, 
+    color: colors.textPrimary,
+    marginBottom: spacing.xl, 
+    textAlign: 'center',
+  },
+  
+  // Form
+  label: { 
+    ...typography.overline, 
+    color: colors.primary, 
+    marginTop: spacing.md, 
+    marginBottom: spacing.sm,
+  },
+  input: { 
+    borderWidth: 1.5, 
+    borderColor: colors.mediumGray, 
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md + 2, 
+    borderRadius: borderRadius.md, 
+    marginBottom: spacing.md, 
+    fontSize: 15, 
+    color: colors.textPrimary, 
+    fontWeight: '500',
+    backgroundColor: colors.white,
+  },
+  row: { 
+    flexDirection: 'row',
+  },
+  categoryContainer: { 
+    flexDirection: 'row', 
+    flexWrap: 'wrap', 
+    marginBottom: spacing.md,
+    gap: spacing.xs,
+  },
+  categoryOption: { 
+    paddingHorizontal: spacing.md, 
+    paddingVertical: spacing.sm, 
+    borderRadius: borderRadius.round, 
+    backgroundColor: colors.lightGray,
+  },
+  categoryOptionSelected: { 
+    backgroundColor: colors.primary,
+  },
+  categoryOptionText: { 
+    ...typography.buttonSmall, 
+    color: colors.textSecondary,
+  },
+  categoryOptionTextSelected: { 
+    color: colors.white,
+  },
+  
+  // Date Picker
+  dateInput: { 
+    borderWidth: 1.5, 
+    borderColor: colors.mediumGray, 
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md + 2, 
+    borderRadius: borderRadius.md, 
+    marginBottom: spacing.md, 
+    backgroundColor: colors.backgroundAlt, 
+    justifyContent: 'center',
+  },
+  dateText: { 
+    fontSize: 15, 
+    color: colors.textPrimary, 
+    fontWeight: '500',
+  },
+  datePlaceholder: { 
+    fontSize: 15, 
+    color: colors.textHint,
+  },
+  datePickerContainer: {
+    backgroundColor: colors.white,
+    padding: spacing.md,
+    borderRadius: borderRadius.lg,
+    marginVertical: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.lightGray,
+    ...shadows.sm,
+  },
+  datePickerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+    paddingBottom: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.lightGray,
+  },
+  datePickerTitle: {
+    ...typography.body,
+    color: colors.primary,
+    fontWeight: '600',
+  },
+  datePickerDoneBtn: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.sm,
+  },
+  datePickerDoneText: {
+    ...typography.buttonSmall,
+    color: colors.white,
+  },
+  
+  // Land Pills
+  landPillsContainer: { 
+    flexDirection: 'row', 
+    marginBottom: spacing.md,
+  },
+  landPill: { 
+    paddingHorizontal: spacing.md, 
+    paddingVertical: spacing.sm, 
+    borderRadius: borderRadius.round, 
+    backgroundColor: colors.lightGray, 
+    marginRight: spacing.sm,
+  },
+  landPillSelected: { 
+    backgroundColor: colors.primary,
+  },
+  landPillText: { 
+    ...typography.buttonSmall, 
+    color: colors.textSecondary,
+  },
+  landPillTextSelected: { 
+    color: colors.white,
+  },
 
-  modalButtons: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 20 },
-  button: { flex: 1, padding: 14, borderRadius: 8, marginHorizontal: 5, alignItems: 'center' },
-  cancelButton: { backgroundColor: '#999' },
-  saveButton: { backgroundColor: '#2e7d32' },
-  buttonText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
+  // Modal Buttons
+  modalButtons: { 
+    flexDirection: 'row', 
+    gap: spacing.md,
+    marginTop: spacing.xl,
+    paddingTop: spacing.lg,
+    borderTopWidth: 1,
+    borderTopColor: colors.lightGray,
+  },
+  button: { 
+    flex: 1, 
+    paddingVertical: spacing.md + 2, 
+    borderRadius: borderRadius.md, 
+    alignItems: 'center',
+  },
+  cancelButton: { 
+    backgroundColor: colors.lightGray,
+  },
+  saveButton: { 
+    backgroundColor: colors.primary,
+    ...shadows.sm,
+  },
+  buttonText: { 
+    ...typography.button, 
+    color: colors.white,
+  },
+  cancelButtonText: {
+    ...typography.button,
+    color: colors.textSecondary,
+  },
 });

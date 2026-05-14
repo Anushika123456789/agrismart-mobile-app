@@ -10,8 +10,10 @@ import {
   Alert,
   ActivityIndicator,
   ScrollView,
+  StatusBar,
 } from 'react-native';
 import { laborService, landService } from '../services/api';
+import { colors, spacing, borderRadius, typography, shadows } from '../styles/colors';
 
 export default function LaborScreen() {
   const [laborers, setLaborers] = useState([]);
@@ -140,7 +142,7 @@ export default function LaborScreen() {
       csvContent += `${date},${a.status},${a.hoursWorked || 'N/A'},${a.taskId || 'General'}\n`;
     });
 
-    Alert.alert('Exporting CSV', 'In a real environment, this would save to your device storage. Logic implemented.');
+    Alert.alert('Exporting CSV', 'In a real environment, this would save to your device storage.');
     console.log('CSV Export Data:', csvContent);
   };
 
@@ -201,11 +203,9 @@ export default function LaborScreen() {
   };
 
   const renderItem = ({ item }) => {
-    // Determine today's current marked attendance
     const todayStr = new Date().toDateString();
     const todaysLog = item.attendance?.find(a => new Date(a.date).toDateString() === todayStr);
 
-    // Calculate Unpaid Wages
     const totalEarned = item.attendance?.reduce((sum, a) => {
       if (a.status === 'present') return sum + item.dailyRate;
       if (a.status === 'half-day') return sum + (item.dailyRate / 2);
@@ -218,29 +218,36 @@ export default function LaborScreen() {
     return (
       <View style={styles.card}>
         <View style={styles.cardHeader}>
-          <View>
-            <Text style={styles.name}>{item.name}</Text>
-            <View style={styles.roleBadge}>
-              <Text style={styles.roleText}>{getRoleLabel(item.role)}</Text>
+          <View style={styles.avatarContainer}>
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>{item.name.charAt(0).toUpperCase()}</Text>
             </View>
-            {item.landId && (
-              <View style={[styles.roleBadge, { backgroundColor: '#e3f2fd', marginLeft: 5 }]}>
-                <Text style={[styles.roleText, { color: '#1976d2' }]}>📍 {item.landId?.location || 'Assigned Land'}</Text>
+            <View style={styles.headerInfo}>
+              <Text style={styles.name}>{item.name}</Text>
+              <View style={styles.badgeRow}>
+                <View style={styles.roleBadge}>
+                  <Text style={styles.roleText}>{getRoleLabel(item.role)}</Text>
+                </View>
+                {item.landId && (
+                  <View style={styles.landBadge}>
+                    <Text style={styles.landBadgeText}>{item.landId?.location || 'Assigned'}</Text>
+                  </View>
+                )}
               </View>
-            )}
+            </View>
           </View>
           <View style={styles.cardActions}>
-            <TouchableOpacity onPress={() => openEditModal(item)} style={styles.editButton}>
+            <TouchableOpacity onPress={() => openEditModal(item)} style={styles.actionButton} activeOpacity={0.7}>
               <Text style={styles.actionText}>✏️</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => deleteLabor(item._id, item.name)} style={styles.deleteButton}>
+            <TouchableOpacity onPress={() => deleteLabor(item._id, item.name)} style={styles.actionButton} activeOpacity={0.7}>
               <Text style={styles.actionText}>🗑️</Text>
             </TouchableOpacity>
           </View>
         </View>
 
         {item.contactNumber ? (
-          <Text style={styles.contact}>📱 {item.contactNumber}</Text>
+          <Text style={styles.contact}>{item.contactNumber}</Text>
         ) : null}
 
         <View style={styles.financeMetrics}>
@@ -248,23 +255,25 @@ export default function LaborScreen() {
             <Text style={styles.rateText}>LKR {item.dailyRate}</Text>
             <Text style={styles.rateLabel}>Daily Rate</Text>
           </View>
-          <View style={[styles.financeBox, unpaidBalance > 0 && { backgroundColor: '#ffebee' }]}>
-            <Text style={[styles.rateText, unpaidBalance > 0 && { color: '#d32f2f' }]}>LKR {unpaidBalance.toFixed(2)}</Text>
+          <View style={[styles.financeBox, unpaidBalance > 0 && styles.unpaidBox]}>
+            <Text style={[styles.rateText, unpaidBalance > 0 && styles.unpaidText]}>
+              LKR {unpaidBalance.toFixed(0)}
+            </Text>
             <Text style={styles.rateLabel}>Unpaid Wages</Text>
           </View>
         </View>
 
         <View style={styles.actionRow}>
-          <TouchableOpacity style={styles.payBtn} onPress={() => openPayModal(item)}>
-            <Text style={styles.payBtnText}>💵 Submit Payment</Text>
+          <TouchableOpacity style={styles.payBtn} onPress={() => openPayModal(item)} activeOpacity={0.7}>
+            <Text style={styles.payBtnText}>Submit Payment</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.payBtn, {backgroundColor: '#1976d2', marginLeft: 8}]} onPress={() => openAttendanceModal(item)}>
-            <Text style={styles.payBtnText}>📅 History</Text>
+          <TouchableOpacity style={styles.historyBtn} onPress={() => openAttendanceModal(item)} activeOpacity={0.7}>
+            <Text style={styles.historyBtnText}>History</Text>
           </TouchableOpacity>
         </View>
 
         <View style={styles.attendanceSection}>
-          <Text style={styles.attendanceTitle}>Mark Today's Attendance</Text>
+          <Text style={styles.attendanceTitle}>Today&apos;s Attendance</Text>
           <View style={styles.attendanceButtons}>
             <TouchableOpacity
               style={[
@@ -273,8 +282,9 @@ export default function LaborScreen() {
                 todaysLog?.status === 'present' && styles.activeAttendanceBtn
               ]}
               onPress={() => markAttendance(item._id, 'present')}
+              activeOpacity={0.7}
             >
-              <Text style={styles.attendanceBtnText}>Present</Text>
+              <Text style={[styles.attendanceBtnText, { color: colors.success }]}>Present</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -284,8 +294,9 @@ export default function LaborScreen() {
                 todaysLog?.status === 'half-day' && styles.activeAttendanceBtn
               ]}
               onPress={() => markAttendance(item._id, 'half-day')}
+              activeOpacity={0.7}
             >
-              <Text style={styles.attendanceBtnText}>Half-Day</Text>
+              <Text style={[styles.attendanceBtnText, { color: colors.warning }]}>Half-Day</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -295,8 +306,9 @@ export default function LaborScreen() {
                 todaysLog?.status === 'absent' && styles.activeAttendanceBtn
               ]}
               onPress={() => markAttendance(item._id, 'absent')}
+              activeOpacity={0.7}
             >
-              <Text style={styles.attendanceBtnText}>Absent</Text>
+              <Text style={[styles.attendanceBtnText, { color: colors.error }]}>Absent</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -307,34 +319,35 @@ export default function LaborScreen() {
   if (loading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color="#2e7d32" />
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={styles.loadingText}>Loading workforce...</Text>
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
+      
       <FlatList
         data={laborers}
         keyExtractor={(item) => item._id}
         renderItem={renderItem}
-        contentContainerStyle={{ paddingBottom: 80 }}
+        contentContainerStyle={{ paddingBottom: 100, paddingTop: spacing.sm }}
+        showsVerticalScrollIndicator={false}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyIcon}>👷‍♂️</Text>
-            <Text style={styles.emptyText}>No laborers found</Text>
-            <Text style={styles.emptySubtext}>Tap + to add workforce</Text>
+            <Text style={styles.emptyIcon}>👷</Text>
+            <Text style={styles.emptyTitle}>No Laborers Found</Text>
+            <Text style={styles.emptyText}>Add workforce members using the + button</Text>
           </View>
         }
       />
 
       <TouchableOpacity
         style={styles.fab}
-        onPress={() => {
-          setEditingItem(null);
-          resetForm();
-          setModalVisible(true);
-        }}
+        onPress={() => { setEditingItem(null); resetForm(); setModalVisible(true); }}
+        activeOpacity={0.8}
       >
         <Text style={styles.fabText}>+</Text>
       </TouchableOpacity>
@@ -342,48 +355,92 @@ export default function LaborScreen() {
       {/* CREATE / EDIT Modal */}
       <Modal animationType="slide" transparent visible={modalVisible}>
         <View style={styles.modalContainer}>
-          <ScrollView contentContainerStyle={styles.modalContent}>
-            <Text style={styles.modalTitle}>
-              {editingItem ? 'Edit Laborer' : 'Add Laborer'}
-            </Text>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHandle} />
+            <Text style={styles.modalTitle}>{editingItem ? 'Edit Laborer' : 'Add Laborer'}</Text>
+            
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <Text style={styles.label}>Worker Details</Text>
+              <TextInput 
+                placeholderTextColor={colors.textHint}
+                style={styles.input} 
+                placeholder="Worker Name" 
+                value={formData.name} 
+                onChangeText={(text) => setFormData({ ...formData, name: text })} 
+              />
+              <TextInput 
+                placeholderTextColor={colors.textHint}
+                style={styles.input} 
+                placeholder="Contact Number (Optional)" 
+                keyboardType="phone-pad" 
+                value={formData.contactNumber} 
+                onChangeText={(text) => setFormData({ ...formData, contactNumber: text })} 
+              />
 
-            <TextInput placeholderTextColor="#666" style={styles.input} placeholder="Worker Name" value={formData.name} onChangeText={(text) => setFormData({ ...formData, name: text })} />
-            <TextInput placeholderTextColor="#666" style={styles.input} placeholder="Contact Number (Optional)" keyboardType="phone-pad" value={formData.contactNumber} onChangeText={(text) => setFormData({ ...formData, contactNumber: text })} />
+              <Text style={styles.label}>Role</Text>
+              <View style={styles.roleContainer}>
+                {roles.map((role) => (
+                  <TouchableOpacity 
+                    key={role.value} 
+                    style={[styles.roleOption, formData.role === role.value && styles.roleOptionSelected]} 
+                    onPress={() => setFormData({ ...formData, role: role.value })}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[styles.roleOptionText, formData.role === role.value && styles.roleOptionTextSelected]}>
+                      {role.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
 
-            <Text style={styles.label}>Role</Text>
-            <View style={styles.roleContainer}>
-              {roles.map((role) => (
-                <TouchableOpacity key={role.value} style={[styles.roleOption, formData.role === role.value && styles.roleOptionSelected]} onPress={() => setFormData({ ...formData, role: role.value })}>
-                  <Text style={[styles.roleOptionText, formData.role === role.value && styles.roleOptionTextSelected]}>{role.label}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+              <Text style={styles.label}>Daily Wage / Rate</Text>
+              <TextInput 
+                placeholderTextColor={colors.textHint}
+                style={styles.input} 
+                placeholder="Daily Rate (LKR)" 
+                keyboardType="numeric" 
+                value={formData.dailyRate} 
+                onChangeText={(text) => setFormData({ ...formData, dailyRate: text })} 
+              />
 
-            <Text style={styles.label}>Daily Wage / Rate</Text>
-            <TextInput placeholderTextColor="#666" style={styles.input} placeholder="Daily Rate (LKR)" keyboardType="numeric" value={formData.dailyRate} onChangeText={(text) => setFormData({ ...formData, dailyRate: text })} />
+              {lands.length > 0 && (
+                <>
+                  <Text style={styles.label}>Assigned Land</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.landPillsContainer}>
+                    {lands.map((land) => (
+                      <TouchableOpacity
+                        key={land._id}
+                        style={[styles.landPill, formData.landId === land._id && styles.landPillSelected]}
+                        onPress={() => setFormData({ ...formData, landId: land._id })}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={[styles.landPillText, formData.landId === land._id && styles.landPillTextSelected]}>
+                          {land.location}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </>
+              )}
 
-            <Text style={styles.label}>Assigned Land</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.landPillsContainer}>
-              {lands.map((land) => (
-                <TouchableOpacity
-                  key={land._id}
-                  style={[styles.landPill, formData.landId === land._id && styles.landPillSelected]}
-                  onPress={() => setFormData({ ...formData, landId: land._id })}
+              <View style={styles.modalButtons}>
+                <TouchableOpacity 
+                  style={[styles.button, styles.cancelButton]} 
+                  onPress={() => { setModalVisible(false); setEditingItem(null); resetForm(); }}
+                  activeOpacity={0.7}
                 >
-                  <Text style={[styles.landPillText, formData.landId === land._id && styles.landPillTextSelected]}>{land.location}</Text>
+                  <Text style={styles.cancelButtonText}>Cancel</Text>
                 </TouchableOpacity>
-              ))}
+                <TouchableOpacity 
+                  style={[styles.button, styles.saveButton]} 
+                  onPress={editingItem ? updateLabor : createLabor}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.buttonText}>{editingItem ? 'Update' : 'Save'}</Text>
+                </TouchableOpacity>
+              </View>
             </ScrollView>
-
-            <View style={styles.modalButtons}>
-              <TouchableOpacity style={[styles.button, styles.cancelButton]} onPress={() => { setModalVisible(false); setEditingItem(null); resetForm(); }}>
-                <Text style={styles.buttonText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.button, styles.saveButton]} onPress={editingItem ? updateLabor : createLabor}>
-                <Text style={styles.buttonText}>{editingItem ? 'Update' : 'Save'}</Text>
-              </TouchableOpacity>
-            </View>
-          </ScrollView>
+          </View>
         </View>
       </Modal>
 
@@ -391,30 +448,35 @@ export default function LaborScreen() {
       <Modal animationType="slide" transparent visible={attendanceModalVisible}>
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
+            <View style={styles.modalHandle} />
             <View style={styles.modalHeaderInline}>
-              <Text style={styles.modalTitleInline}>Attendance: {selectedLaborer?.name}</Text>
-              <TouchableOpacity onPress={() => setAttendanceModalVisible(false)}>
-                <Text style={{fontSize: 24, color: '#999'}}>✖</Text>
+              <Text style={styles.modalTitleInline}>{selectedLaborer?.name}&apos;s Attendance</Text>
+              <TouchableOpacity onPress={() => setAttendanceModalVisible(false)} activeOpacity={0.7}>
+                <Text style={styles.closeIcon}>✕</Text>
               </TouchableOpacity>
             </View>
 
-            <TouchableOpacity style={styles.exportBtnInline} onPress={() => exportAttendanceCSV(selectedLaborer)}>
-              <Text style={styles.exportBtnText}>📥 Export Attendance CSV</Text>
+            <TouchableOpacity style={styles.exportBtnInline} onPress={() => exportAttendanceCSV(selectedLaborer)} activeOpacity={0.7}>
+              <Text style={styles.exportBtnText}>Export CSV</Text>
             </TouchableOpacity>
 
-            <ScrollView style={{maxHeight: 400}}>
+            <ScrollView style={styles.historyScroll}>
               {selectedLaborer?.attendance?.sort((a, b) => new Date(b.date) - new Date(a.date)).map((a, idx) => (
                 <View key={idx} style={styles.historyRow}>
-                   <Text style={styles.historyDate}>{new Date(a.date).toLocaleDateString()}</Text>
-                   <View style={[styles.statusTag, 
-                      a.status === 'present' ? {backgroundColor: '#e8f5e9'} : 
-                      a.status === 'half-day' ? {backgroundColor: '#fff3e0'} : {backgroundColor: '#ffebee'}
-                   ]}>
-                      <Text style={[styles.statusTagText, 
-                        a.status === 'present' ? {color: '#2e7d32'} : 
-                        a.status === 'half-day' ? {color: '#f57c00'} : {color: '#d32f2f'}
-                      ]}>{a.status.toUpperCase()}</Text>
-                   </View>
+                  <Text style={styles.historyDate}>{new Date(a.date).toLocaleDateString()}</Text>
+                  <View style={[
+                    styles.statusTag, 
+                    a.status === 'present' ? styles.statusPresent : 
+                    a.status === 'half-day' ? styles.statusHalfDay : styles.statusAbsent
+                  ]}>
+                    <Text style={[
+                      styles.statusTagText,
+                      a.status === 'present' ? styles.statusPresentText : 
+                      a.status === 'half-day' ? styles.statusHalfDayText : styles.statusAbsentText
+                    ]}>
+                      {a.status.toUpperCase()}
+                    </Text>
+                  </View>
                 </View>
               ))}
               {(!selectedLaborer?.attendance || selectedLaborer.attendance.length === 0) && (
@@ -422,7 +484,11 @@ export default function LaborScreen() {
               )}
             </ScrollView>
 
-            <TouchableOpacity style={[styles.button, styles.saveButton, {marginTop: 20}]} onPress={() => setAttendanceModalVisible(false)}>
+            <TouchableOpacity 
+              style={[styles.button, styles.saveButton, { marginTop: spacing.lg }]} 
+              onPress={() => setAttendanceModalVisible(false)}
+              activeOpacity={0.8}
+            >
               <Text style={styles.buttonText}>Close</Text>
             </TouchableOpacity>
           </View>
@@ -433,101 +499,511 @@ export default function LaborScreen() {
       <Modal animationType="slide" transparent visible={payModalVisible}>
         <View style={styles.modalContainer}>
           <View style={styles.payModalContent}>
-            <Text style={styles.modalTitle}>Submit Pay for {editingItem?.name}</Text>
+            <View style={styles.modalHandle} />
+            <Text style={styles.modalTitle}>Pay {editingItem?.name}</Text>
 
-            <Text style={styles.label}>Tending Amount</Text>
-            <TextInput placeholderTextColor="#666" style={styles.input} keyboardType="numeric" placeholder="Amount (LKR)" value={paymentData.amount} onChangeText={(text) => setPaymentData({ ...paymentData, amount: text })} />
+            <Text style={styles.label}>Payment Amount</Text>
+            <TextInput 
+              placeholderTextColor={colors.textHint}
+              style={styles.input} 
+              keyboardType="numeric" 
+              placeholder="Amount (LKR)" 
+              value={paymentData.amount} 
+              onChangeText={(text) => setPaymentData({ ...paymentData, amount: text })} 
+            />
 
-            <Text style={styles.label}>Payment Note / Memo</Text>
-            <TextInput placeholderTextColor="#666" style={styles.input} placeholder="e.g. Cash, Weekly Clearance" value={paymentData.description} onChangeText={(text) => setPaymentData({ ...paymentData, description: text })} />
+            <Text style={styles.label}>Payment Note</Text>
+            <TextInput 
+              placeholderTextColor={colors.textHint}
+              style={styles.input} 
+              placeholder="e.g. Cash, Weekly Clearance" 
+              value={paymentData.description} 
+              onChangeText={(text) => setPaymentData({ ...paymentData, description: text })} 
+            />
 
             <View style={styles.modalButtons}>
-              <TouchableOpacity style={[styles.button, styles.cancelButton]} onPress={() => setPayModalVisible(false)}>
-                <Text style={styles.buttonText}>Cancel</Text>
+              <TouchableOpacity 
+                style={[styles.button, styles.cancelButton]} 
+                onPress={() => setPayModalVisible(false)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.button, styles.saveButton]} onPress={submitPayment}>
-                <Text style={styles.buttonText}>Confirm Payment</Text>
+              <TouchableOpacity 
+                style={[styles.button, styles.saveButton]} 
+                onPress={submitPayment}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.buttonText}>Confirm</Text>
               </TouchableOpacity>
             </View>
           </View>
         </View>
       </Modal>
-
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f5f5f5' },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  card: { backgroundColor: '#fff', margin: 10, padding: 15, borderRadius: 12, elevation: 2 },
-  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  name: { fontSize: 18, fontWeight: 'bold', color: '#333' },
-  roleBadge: { backgroundColor: '#e8f5e9', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12, marginTop: 5, alignSelf: 'flex-start' },
-  roleText: { color: '#2e7d32', fontSize: 12, fontWeight: 'bold' },
-  cardActions: { flexDirection: 'row' },
-  editButton: { padding: 5, marginRight: 10 },
-  deleteButton: { padding: 5 },
-  actionText: { fontSize: 18 },
-  contact: { fontSize: 14, color: '#666', marginTop: 8 },
+  container: { 
+    flex: 1, 
+    backgroundColor: colors.background,
+  },
+  center: { 
+    flex: 1, 
+    justifyContent: 'center', 
+    alignItems: 'center',
+    backgroundColor: colors.background,
+  },
+  loadingText: {
+    ...typography.body,
+    color: colors.textTertiary,
+    marginTop: spacing.md,
+  },
+  
+  // Card
+  card: { 
+    backgroundColor: colors.white, 
+    marginHorizontal: spacing.lg, 
+    marginVertical: spacing.sm, 
+    padding: spacing.lg, 
+    borderRadius: borderRadius.lg, 
+    ...shadows.sm,
+    borderWidth: 1,
+    borderColor: colors.lightGray,
+  },
+  cardHeader: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'flex-start',
+  },
+  avatarContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  avatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: colors.primaryMuted,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.md,
+  },
+  avatarText: {
+    ...typography.h4,
+    color: colors.primary,
+  },
+  headerInfo: {
+    flex: 1,
+  },
+  name: { 
+    ...typography.h4, 
+    color: colors.textPrimary,
+  },
+  badgeRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginTop: spacing.xs,
+    gap: spacing.xs,
+  },
+  roleBadge: { 
+    backgroundColor: colors.primaryMuted, 
+    paddingHorizontal: spacing.sm, 
+    paddingVertical: spacing.xs, 
+    borderRadius: borderRadius.round,
+  },
+  roleText: { 
+    ...typography.caption,
+    color: colors.primary, 
+    fontWeight: '600',
+  },
+  landBadge: {
+    backgroundColor: colors.infoLight,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.round,
+  },
+  landBadgeText: {
+    ...typography.caption,
+    color: colors.info,
+    fontWeight: '600',
+  },
+  cardActions: { 
+    flexDirection: 'row',
+    gap: spacing.xs,
+  },
+  actionButton: { 
+    width: 36,
+    height: 36,
+    borderRadius: borderRadius.sm,
+    backgroundColor: colors.lightGray,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  actionText: { 
+    fontSize: 16,
+  },
+  contact: { 
+    ...typography.bodySmall, 
+    color: colors.textTertiary, 
+    marginTop: spacing.sm,
+    marginLeft: 60,
+  },
 
-  financeMetrics: { flexDirection: 'row', marginTop: 15, justifyContent: 'space-between' },
-  financeBox: { flex: 1, alignItems: 'center', padding: 10, backgroundColor: '#f5f5f5', borderRadius: 8, marginHorizontal: 2 },
-  rateText: { fontSize: 18, fontWeight: 'bold', color: '#2e7d32' },
-  rateLabel: { fontSize: 12, color: '#666' },
+  // Finance Metrics
+  financeMetrics: { 
+    flexDirection: 'row', 
+    marginTop: spacing.lg, 
+    gap: spacing.sm,
+  },
+  financeBox: { 
+    flex: 1, 
+    alignItems: 'center', 
+    paddingVertical: spacing.md, 
+    backgroundColor: colors.backgroundAlt, 
+    borderRadius: borderRadius.md,
+  },
+  unpaidBox: {
+    backgroundColor: colors.errorLight,
+  },
+  rateText: { 
+    ...typography.h4, 
+    color: colors.primary,
+  },
+  unpaidText: {
+    color: colors.error,
+  },
+  rateLabel: { 
+    ...typography.caption, 
+    color: colors.textTertiary,
+    marginTop: spacing.xs,
+  },
 
-  payBtn: { flex: 1, backgroundColor: '#2e7d32', padding: 12, borderRadius: 8, marginTop: 10, alignItems: 'center' },
-  payBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 15 },
-  actionRow: { flexDirection: 'row' },
+  // Action Buttons
+  actionRow: { 
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginTop: spacing.md,
+  },
+  payBtn: { 
+    flex: 1, 
+    backgroundColor: colors.primary, 
+    paddingVertical: spacing.md, 
+    borderRadius: borderRadius.md, 
+    alignItems: 'center',
+    ...shadows.sm,
+  },
+  payBtnText: { 
+    ...typography.button,
+    color: colors.white,
+  },
+  historyBtn: {
+    flex: 1,
+    backgroundColor: colors.info,
+    paddingVertical: spacing.md,
+    borderRadius: borderRadius.md,
+    alignItems: 'center',
+    ...shadows.sm,
+  },
+  historyBtnText: {
+    ...typography.button,
+    color: colors.white,
+  },
 
-  attendanceSection: { marginTop: 15, paddingTop: 15, borderTopWidth: 1, borderTopColor: '#eee' },
-  attendanceTitle: { fontSize: 13, fontWeight: 'bold', color: '#333', marginBottom: 10, textAlign: 'center' },
-  attendanceButtons: { flexDirection: 'row', justifyContent: 'space-between' },
-  attendanceBtn: { flex: 1, paddingVertical: 10, borderRadius: 8, alignItems: 'center', marginHorizontal: 3, borderWidth: 1 },
-  presentBtn: { borderColor: '#4caf50', backgroundColor: '#e8f5e9' },
-  halfDayBtn: { borderColor: '#ff9800', backgroundColor: '#fff3e0' },
-  absentBtn: { borderColor: '#f44336', backgroundColor: '#ffebee' },
-  activeAttendanceBtn: { borderWidth: 3, elevation: 2 },
-  attendanceBtnText: { fontSize: 12, fontWeight: 'bold', color: '#333' },
+  // Attendance Section
+  attendanceSection: { 
+    marginTop: spacing.lg, 
+    paddingTop: spacing.lg, 
+    borderTopWidth: 1, 
+    borderTopColor: colors.lightGray,
+  },
+  attendanceTitle: { 
+    ...typography.caption, 
+    color: colors.textSecondary, 
+    marginBottom: spacing.sm, 
+    textAlign: 'center',
+    fontWeight: '600',
+  },
+  attendanceButtons: { 
+    flexDirection: 'row', 
+    gap: spacing.sm,
+  },
+  attendanceBtn: { 
+    flex: 1, 
+    paddingVertical: spacing.sm + 2, 
+    borderRadius: borderRadius.sm, 
+    alignItems: 'center', 
+    borderWidth: 1.5,
+  },
+  presentBtn: { 
+    borderColor: colors.success, 
+    backgroundColor: colors.successLight,
+  },
+  halfDayBtn: { 
+    borderColor: colors.warning, 
+    backgroundColor: colors.warningLight,
+  },
+  absentBtn: { 
+    borderColor: colors.error, 
+    backgroundColor: colors.errorLight,
+  },
+  activeAttendanceBtn: { 
+    borderWidth: 3,
+    ...shadows.sm,
+  },
+  attendanceBtnText: { 
+    ...typography.buttonSmall,
+  },
 
-  emptyContainer: { alignItems: 'center', marginTop: 100 },
-  emptyIcon: { fontSize: 60, marginBottom: 20 },
-  emptyText: { fontSize: 18, color: '#999' },
-  emptySubtext: { fontSize: 14, color: '#ccc', marginTop: 10 },
-  fab: { position: 'absolute', bottom: 20, right: 20, backgroundColor: '#2e7d32', width: 56, height: 56, borderRadius: 28, justifyContent: 'center', alignItems: 'center', elevation: 5 },
-  fabText: { fontSize: 32, color: '#fff' },
-  modalContainer: { flex: 1, justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.5)' },
-  modalContent: { backgroundColor: '#fff', margin: 20, padding: 20, borderRadius: 15, maxHeight: '90%' },
-  payModalContent: { backgroundColor: '#fff', margin: 20, padding: 20, borderRadius: 15 },
-  modalTitle: { fontSize: 24, fontWeight: 'bold', marginBottom: 20, textAlign: 'center', color: '#2e7d32' },
-  input: { borderWidth: 1, borderColor: '#ddd', padding: 12, borderRadius: 8, marginBottom: 12, fontSize: 16, color: '#212121', fontWeight: '500' },
-  label: { fontSize: 14, fontWeight: 'bold', color: '#333', marginBottom: 8, marginTop: 8 },
-  roleContainer: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 12 },
-  roleOption: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, backgroundColor: '#e0e0e0', margin: 4 },
-  roleOptionSelected: { backgroundColor: '#2e7d32' },
-  roleOptionText: { fontSize: 12, color: '#333' },
-  roleOptionTextSelected: { color: '#fff' },
-  roleOptionTextSelected: { color: '#fff' },
+  // Empty State
+  emptyContainer: { 
+    alignItems: 'center', 
+    paddingVertical: spacing.huge * 2,
+    paddingHorizontal: spacing.xl,
+  },
+  emptyIcon: { 
+    fontSize: 64, 
+    marginBottom: spacing.lg,
+    opacity: 0.7,
+  },
+  emptyTitle: {
+    ...typography.h4,
+    color: colors.textSecondary,
+    marginBottom: spacing.sm,
+  },
+  emptyText: { 
+    ...typography.body, 
+    color: colors.textTertiary,
+    textAlign: 'center',
+  },
+  
+  // FAB
+  fab: { 
+    position: 'absolute', 
+    bottom: spacing.xxl, 
+    right: spacing.xl, 
+    backgroundColor: colors.primary, 
+    width: 60, 
+    height: 60, 
+    borderRadius: 30, 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    ...shadows.lg,
+  },
+  fabText: { 
+    fontSize: 28, 
+    color: colors.white,
+    marginTop: -2,
+  },
+  
+  // Modal
+  modalContainer: { 
+    flex: 1, 
+    justifyContent: 'flex-end', 
+    backgroundColor: colors.overlay,
+  },
+  modalContent: { 
+    backgroundColor: colors.white, 
+    borderTopLeftRadius: borderRadius.xxl,
+    borderTopRightRadius: borderRadius.xxl,
+    padding: spacing.xl,
+    paddingTop: spacing.md,
+    maxHeight: '92%',
+  },
+  payModalContent: { 
+    backgroundColor: colors.white, 
+    borderTopLeftRadius: borderRadius.xxl,
+    borderTopRightRadius: borderRadius.xxl,
+    padding: spacing.xl,
+    paddingTop: spacing.md,
+  },
+  modalHandle: {
+    width: 40,
+    height: 4,
+    backgroundColor: colors.mediumGray,
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginBottom: spacing.lg,
+  },
+  modalTitle: { 
+    ...typography.h3, 
+    color: colors.textPrimary,
+    marginBottom: spacing.xl, 
+    textAlign: 'center',
+  },
+  
+  // Form
+  input: { 
+    borderWidth: 1.5, 
+    borderColor: colors.mediumGray, 
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md + 2, 
+    borderRadius: borderRadius.md, 
+    marginBottom: spacing.md, 
+    fontSize: 15, 
+    color: colors.textPrimary, 
+    fontWeight: '500',
+    backgroundColor: colors.white,
+  },
+  label: { 
+    ...typography.overline, 
+    color: colors.primary, 
+    marginBottom: spacing.sm, 
+    marginTop: spacing.md,
+  },
+  roleContainer: { 
+    flexDirection: 'row', 
+    flexWrap: 'wrap', 
+    marginBottom: spacing.md,
+    gap: spacing.xs,
+  },
+  roleOption: { 
+    paddingHorizontal: spacing.md, 
+    paddingVertical: spacing.sm, 
+    borderRadius: borderRadius.round, 
+    backgroundColor: colors.lightGray,
+  },
+  roleOptionSelected: { 
+    backgroundColor: colors.primary,
+  },
+  roleOptionText: { 
+    ...typography.buttonSmall, 
+    color: colors.textSecondary,
+  },
+  roleOptionTextSelected: { 
+    color: colors.white,
+  },
 
-  landPillsContainer: { flexDirection: 'row', marginBottom: 15 },
-  landPill: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, backgroundColor: '#f0f0f0', marginRight: 8, height: 35, justifyContent: 'center' },
-  landPillSelected: { backgroundColor: '#2e7d32' },
-  landPillText: { fontSize: 12, color: '#666' },
-  landPillTextSelected: { color: '#fff', fontWeight: 'bold' },
+  // Land Pills
+  landPillsContainer: { 
+    flexDirection: 'row', 
+    marginBottom: spacing.md,
+  },
+  landPill: { 
+    paddingHorizontal: spacing.md, 
+    paddingVertical: spacing.sm, 
+    borderRadius: borderRadius.round, 
+    backgroundColor: colors.lightGray, 
+    marginRight: spacing.sm,
+  },
+  landPillSelected: { 
+    backgroundColor: colors.primary,
+  },
+  landPillText: { 
+    ...typography.buttonSmall, 
+    color: colors.textSecondary,
+  },
+  landPillTextSelected: { 
+    color: colors.white,
+  },
 
-  modalButtons: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 20 },
-  button: { flex: 1, padding: 14, borderRadius: 8, marginHorizontal: 5, alignItems: 'center' },
-  cancelButton: { backgroundColor: '#999' },
-  saveButton: { backgroundColor: '#2e7d32' },
-  buttonText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
+  // Modal Buttons
+  modalButtons: { 
+    flexDirection: 'row', 
+    gap: spacing.md,
+    marginTop: spacing.xl,
+    paddingTop: spacing.lg,
+    borderTopWidth: 1,
+    borderTopColor: colors.lightGray,
+  },
+  button: { 
+    flex: 1, 
+    paddingVertical: spacing.md + 2, 
+    borderRadius: borderRadius.md, 
+    alignItems: 'center',
+  },
+  cancelButton: { 
+    backgroundColor: colors.lightGray,
+  },
+  saveButton: { 
+    backgroundColor: colors.primary,
+    ...shadows.sm,
+  },
+  buttonText: { 
+    ...typography.button, 
+    color: colors.white,
+  },
+  cancelButtonText: {
+    ...typography.button,
+    color: colors.textSecondary,
+  },
 
-  modalHeaderInline: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
-  modalTitleInline: { fontSize: 18, fontWeight: 'bold', color: '#2e7d32' },
-  exportBtnInline: { backgroundColor: '#2e7d32', padding: 12, borderRadius: 8, marginBottom: 15, alignItems: 'center' },
-  exportBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 14 },
-  historyRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#eee' },
-  historyDate: { fontSize: 14, color: '#333', fontWeight: '500' },
-  statusTag: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
-  statusTagText: { fontSize: 10, fontWeight: 'bold' },
-  emptyLogText: { textAlign: 'center', color: '#999', marginTop: 20, fontStyle: 'italic' },
+  // History Modal
+  modalHeaderInline: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center', 
+    marginBottom: spacing.lg,
+  },
+  modalTitleInline: { 
+    ...typography.h4, 
+    color: colors.textPrimary,
+  },
+  closeIcon: {
+    fontSize: 20,
+    color: colors.textTertiary,
+    padding: spacing.sm,
+  },
+  exportBtnInline: { 
+    backgroundColor: colors.primary, 
+    paddingVertical: spacing.sm + 2, 
+    borderRadius: borderRadius.md, 
+    marginBottom: spacing.lg, 
+    alignItems: 'center',
+  },
+  exportBtnText: { 
+    ...typography.button,
+    color: colors.white,
+  },
+  historyScroll: {
+    maxHeight: 400,
+  },
+  historyRow: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center', 
+    paddingVertical: spacing.md, 
+    borderBottomWidth: 1, 
+    borderBottomColor: colors.lightGray,
+  },
+  historyDate: { 
+    ...typography.body, 
+    color: colors.textPrimary,
+  },
+  statusTag: { 
+    paddingHorizontal: spacing.sm, 
+    paddingVertical: spacing.xs, 
+    borderRadius: borderRadius.xs,
+  },
+  statusPresent: {
+    backgroundColor: colors.successLight,
+  },
+  statusHalfDay: {
+    backgroundColor: colors.warningLight,
+  },
+  statusAbsent: {
+    backgroundColor: colors.errorLight,
+  },
+  statusTagText: { 
+    ...typography.overline,
+    fontSize: 10,
+  },
+  statusPresentText: {
+    color: colors.success,
+  },
+  statusHalfDayText: {
+    color: colors.warning,
+  },
+  statusAbsentText: {
+    color: colors.error,
+  },
+  emptyLogText: { 
+    textAlign: 'center', 
+    color: colors.textTertiary, 
+    marginTop: spacing.xl,
+    ...typography.body,
+    fontStyle: 'italic',
+  },
 });
