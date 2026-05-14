@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -18,6 +18,7 @@ import MapView, { Marker } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { useFocusEffect } from '@react-navigation/native';
 import { landService, authService, inventoryService, machineryService, laborService } from '../services/api';
+import { colors, spacing, borderRadius, typography, shadows } from '../styles/colors';
 
 export default function FarmProfileScreen() {
   const [activeTab, setActiveTab] = useState('profile');
@@ -44,7 +45,7 @@ export default function FarmProfileScreen() {
     soilDetails: { nitrogen: '', phosphorus: '', potassium: '', ph: '' },
     soilType: 'other',
     status: 'active',
-    mapLink: '', // also holds GPS
+    mapLink: '',
   });
 
   // Map Picker State
@@ -78,10 +79,9 @@ export default function FarmProfileScreen() {
       const fetchedLands = landsRes.data || [];
       setLands(fetchedLands);
       setInventory(invRes.data || []);
-      setMachinery(macRes.data.all || []); // Handling machinery grouped response
-      setLaborers(labRes.data.all || []); // Handling labor grouped response
+      setMachinery(macRes.data.all || []);
+      setLaborers(labRes.data.all || []);
 
-      // Calculate Total Land Area (Assuming all in acres for simplicity)
       const total = fetchedLands.reduce((sum, land) => sum + (land.size?.value || 0), 0);
       setTotalArea(total);
 
@@ -291,14 +291,12 @@ export default function FarmProfileScreen() {
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const asset = result.assets[0];
         
-        // Ensure format is valid based on extension/type (expo usually returns jpeg or png)
         if (asset.uri && !(asset.uri.toLowerCase().endsWith('.jpg') || asset.uri.toLowerCase().endsWith('.jpeg') || asset.uri.toLowerCase().endsWith('.png') || asset.uri.toLowerCase().endsWith('.webp'))) {
           Alert.alert('Invalid Format', 'Please select a valid image file (JPG, PNG, WEBP).');
           return;
         }
 
         if (asset.base64) {
-          // Limit size roughly to 1MB (base64 size * 0.75 gives approx byte size)
           const sizeInBytes = asset.base64.length * 0.75;
           if (sizeInBytes > 1024 * 1024) {
             Alert.alert('File too large', 'Image size must be less than 1MB to keep the database lightweight.');
@@ -315,138 +313,195 @@ export default function FarmProfileScreen() {
   };
 
   const renderProfileTab = () => (
-    <ScrollView style={styles.tabContent}>
+    <ScrollView style={styles.tabContent} showsVerticalScrollIndicator={false}>
+      {/* Stats Cards */}
       <View style={styles.statsContainer}>
-        <View style={styles.statBox}>
+        <View style={styles.statCard}>
+          <View style={styles.statIconBg}>
+            <Text style={styles.statIcon}>🌾</Text>
+          </View>
           <Text style={styles.statValue}>{lands.length}</Text>
           <Text style={styles.statLabel}>Total Plots</Text>
         </View>
-        <View style={styles.statBox}>
-          <Text style={styles.statValue}>{totalArea}</Text>
+        <View style={styles.statCard}>
+          <View style={styles.statIconBg}>
+            <Text style={styles.statIcon}>📐</Text>
+          </View>
+          <Text style={styles.statValue}>{totalArea.toFixed(1)}</Text>
           <Text style={styles.statLabel}>Total Acres</Text>
         </View>
       </View>
 
+      {/* Profile Card */}
       <View style={styles.card}>
-        <Text style={styles.sectionLabel}>Edit Profile</Text>
+        <Text style={styles.sectionTitle}>Edit Profile</Text>
         
+        {/* Profile Picture */}
         <View style={styles.profilePicContainer}>
-           <TouchableOpacity onPress={pickImage} style={styles.profilePicWrapper}>
-              {profile.profilePicture ? (
-                <Image source={{ uri: profile.profilePicture }} style={styles.profilePic} />
-              ) : (
-                <View style={styles.profilePicPlaceholder}>
-                  <Text style={styles.profilePicInitials}>{profile.name ? profile.name.charAt(0).toUpperCase() : 'F'}</Text>
-                </View>
-              )}
-              <View style={styles.editIconBadge}>
-                <Text style={{color: '#fff', fontSize: 12}}>📷</Text>
+          <TouchableOpacity onPress={pickImage} style={styles.profilePicWrapper} activeOpacity={0.8}>
+            {profile.profilePicture ? (
+              <Image source={{ uri: profile.profilePicture }} style={styles.profilePic} />
+            ) : (
+              <View style={styles.profilePicPlaceholder}>
+                <Text style={styles.profilePicInitials}>
+                  {profile.name ? profile.name.charAt(0).toUpperCase() : 'F'}
+                </Text>
               </View>
-           </TouchableOpacity>
+            )}
+            <View style={styles.editIconBadge}>
+              <Text style={styles.editIconText}>📷</Text>
+            </View>
+          </TouchableOpacity>
+          <Text style={styles.profilePicHint}>Tap to change photo</Text>
         </View>
         
-        <TextInput placeholderTextColor="#666"
+        <Text style={styles.inputLabel}>Full Name</Text>
+        <TextInput 
+          placeholderTextColor={colors.textHint}
           style={styles.input}
-          placeholder="Name"
+          placeholder="Enter your name"
           value={profile.name}
           onChangeText={(text) => setProfile({ ...profile, name: text })}
         />
-        <TextInput placeholderTextColor="#666"
+        
+        <Text style={styles.inputLabel}>Email Address</Text>
+        <TextInput 
+          placeholderTextColor={colors.textHint}
           style={styles.input}
-          placeholder="Email"
+          placeholder="Enter your email"
           value={profile.email}
           onChangeText={(text) => setProfile({ ...profile, email: text })}
           keyboardType="email-address"
         />
-        <TextInput placeholderTextColor="#666"
+        
+        <Text style={styles.inputLabel}>Phone Number</Text>
+        <TextInput 
+          placeholderTextColor={colors.textHint}
           style={styles.input}
-          placeholder="Phone Number"
+          placeholder="Enter your phone number"
           value={profile.phone}
           onChangeText={(text) => setProfile({ ...profile, phone: text })}
           keyboardType="phone-pad"
         />
         
-        <TouchableOpacity style={styles.saveButton} onPress={updateProfile}>
-          <Text style={styles.buttonText}>Save Profile</Text>
+        <TouchableOpacity style={styles.saveBtn} onPress={updateProfile} activeOpacity={0.8}>
+          <Text style={styles.saveBtnText}>Save Profile</Text>
         </TouchableOpacity>
       </View>
 
-      <TouchableOpacity style={styles.dangerButton} onPress={() => setShowPasswordModal(true)}>
-        <Text style={styles.buttonText}>Change Password</Text>
+      {/* Change Password Button */}
+      <TouchableOpacity style={styles.changePasswordBtn} onPress={() => setShowPasswordModal(true)} activeOpacity={0.8}>
+        <Text style={styles.changePasswordIcon}>🔒</Text>
+        <Text style={styles.changePasswordText}>Change Password</Text>
       </TouchableOpacity>
 
+      {/* Password Modal */}
       <Modal animationType="slide" transparent visible={showPasswordModal}>
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Change Password</Text>
-            <TextInput placeholderTextColor="#666"
-              style={styles.input}
-              placeholder="Current Password"
-              secureTextEntry
-              value={passwordForm.currentPassword}
-              onChangeText={(text) => setPasswordForm({ ...passwordForm, currentPassword: text })}
-            />
-            <TextInput placeholderTextColor="#666"
-              style={styles.input}
-              placeholder="New Password"
-              secureTextEntry
-              value={passwordForm.newPassword}
-              onChangeText={(text) => setPasswordForm({ ...passwordForm, newPassword: text })}
-            />
-            <View style={styles.modalButtons}>
-              <TouchableOpacity style={[styles.button, styles.cancelButton]} onPress={() => setShowPasswordModal(false)}>
-                <Text style={styles.buttonText}>Cancel</Text>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Change Password</Text>
+              <TouchableOpacity onPress={() => setShowPasswordModal(false)} style={styles.modalCloseBtn}>
+                <Text style={styles.modalCloseBtnText}>✕</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.button, styles.saveButton]} onPress={updatePassword}>
-                <Text style={styles.buttonText}>Update</Text>
-              </TouchableOpacity>
+            </View>
+            
+            <View style={styles.modalContent}>
+              <Text style={styles.inputLabel}>Current Password</Text>
+              <TextInput 
+                placeholderTextColor={colors.textHint}
+                style={styles.input}
+                placeholder="Enter current password"
+                secureTextEntry
+                value={passwordForm.currentPassword}
+                onChangeText={(text) => setPasswordForm({ ...passwordForm, currentPassword: text })}
+              />
+              
+              <Text style={styles.inputLabel}>New Password</Text>
+              <TextInput 
+                placeholderTextColor={colors.textHint}
+                style={styles.input}
+                placeholder="Enter new password"
+                secureTextEntry
+                value={passwordForm.newPassword}
+                onChangeText={(text) => setPasswordForm({ ...passwordForm, newPassword: text })}
+              />
+              
+              <View style={styles.modalActions}>
+                <TouchableOpacity style={[styles.modalBtn, styles.cancelBtn]} onPress={() => setShowPasswordModal(false)}>
+                  <Text style={styles.cancelBtnText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.modalBtn, styles.primaryBtn]} onPress={updatePassword}>
+                  <Text style={styles.primaryBtnText}>Update</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
         </View>
       </Modal>
+      
+      <View style={{ height: 40 }} />
     </ScrollView>
   );
 
   const renderLandItem = ({ item }) => (
-    <View style={styles.card}>
-      <View style={styles.cardHeader}>
-        <View>
-          <Text style={styles.location}>{item.location}</Text>
+    <View style={styles.landCard}>
+      <View style={styles.landCardHeader}>
+        <View style={styles.landCardTitleSection}>
+          <Text style={styles.landLocation}>{item.location}</Text>
           <View style={styles.badgeRow}>
-            <Text style={[styles.badge, { backgroundColor: item.status === 'active' ? '#4caf50' : '#ff9800' }]}>
-              {item.status.toUpperCase()}
-            </Text>
-            {item.soilType && item.soilType !== 'other' && (
-              <Text style={[styles.badge, { backgroundColor: '#795548', marginLeft: 5 }]}>
-                {item.soilType.toUpperCase()}
+            <View style={[styles.statusBadge, { backgroundColor: item.status === 'active' ? colors.successLight : colors.warningLight }]}>
+              <Text style={[styles.statusBadgeText, { color: item.status === 'active' ? colors.success : colors.warning }]}>
+                {item.status.toUpperCase()}
               </Text>
+            </View>
+            {item.soilType && item.soilType !== 'other' && (
+              <View style={[styles.soilBadge]}>
+                <Text style={styles.soilBadgeText}>{item.soilType.toUpperCase()}</Text>
+              </View>
             )}
           </View>
         </View>
         <View style={styles.actionButtons}>
           {item.mapLink ? (
-            <TouchableOpacity onPress={() => openMap(item.mapLink)} style={styles.actionButton}>
-              <Text style={styles.actionText}>📍</Text>
+            <TouchableOpacity onPress={() => openMap(item.mapLink)} style={styles.actionBtn} activeOpacity={0.7}>
+              <Text style={styles.actionIcon}>📍</Text>
             </TouchableOpacity>
           ) : null}
-          <TouchableOpacity onPress={() => openEditModal(item)} style={styles.actionButton}>
-            <Text style={styles.actionText}>✏️</Text>
+          <TouchableOpacity onPress={() => openEditModal(item)} style={styles.actionBtn} activeOpacity={0.7}>
+            <Text style={styles.actionIcon}>✏️</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => deleteLand(item._id, item.location)} style={styles.actionButton}>
-            <Text style={styles.actionText}>🗑️</Text>
+          <TouchableOpacity onPress={() => deleteLand(item._id, item.location)} style={[styles.actionBtn, styles.deleteBtn]} activeOpacity={0.7}>
+            <Text style={styles.actionIcon}>🗑️</Text>
           </TouchableOpacity>
         </View>
       </View>
-      <Text style={styles.sizeText}>Size: {item.size?.value} {item.size?.unit}</Text>
-      <Text style={styles.soilText}>
-        🌱 N:{item.soilDetails?.nitrogen} | P:{item.soilDetails?.phosphorus} | 
-        K:{item.soilDetails?.potassium} | pH:{item.soilDetails?.ph}
-      </Text>
+      
+      <View style={styles.landCardInfo}>
+        <View style={styles.landInfoItem}>
+          <Text style={styles.landInfoIcon}>📐</Text>
+          <Text style={styles.landInfoText}>{item.size?.value} {item.size?.unit}</Text>
+        </View>
+        <View style={styles.landInfoItem}>
+          <Text style={styles.landInfoIcon}>🌱</Text>
+          <Text style={styles.landInfoText}>
+            N:{item.soilDetails?.nitrogen} | P:{item.soilDetails?.phosphorus} | 
+            K:{item.soilDetails?.potassium} | pH:{item.soilDetails?.ph}
+          </Text>
+        </View>
+      </View>
 
+      {/* Resource Summary */}
       <View style={styles.resourceSummary}>
-         <View style={styles.resourceBadge}><Text style={styles.resourceText}>📦 {inventory.filter(i => (i.landId?._id || i.landId) === item._id).length} Items</Text></View>
-         <View style={styles.resourceBadge}><Text style={styles.resourceText}>🚜 {machinery.filter(m => (m.landId?._id || m.landId) === item._id).length} Assets</Text></View>
-         <View style={styles.resourceBadge}><Text style={styles.resourceText}>👷‍♂️ {laborers.filter(l => (l.landId?._id || l.landId) === item._id).length} Workers</Text></View>
+        <View style={styles.resourceBadge}>
+          <Text style={styles.resourceBadgeText}>📦 {inventory.filter(i => (i.landId?._id || i.landId) === item._id).length} Items</Text>
+        </View>
+        <View style={styles.resourceBadge}>
+          <Text style={styles.resourceBadgeText}>🚜 {machinery.filter(m => (m.landId?._id || m.landId) === item._id).length} Assets</Text>
+        </View>
+        <View style={styles.resourceBadge}>
+          <Text style={styles.resourceBadgeText}>👷 {laborers.filter(l => (l.landId?._id || l.landId) === item._id).length} Workers</Text>
+        </View>
       </View>
     </View>
   );
@@ -457,18 +512,26 @@ export default function FarmProfileScreen() {
         data={lands}
         keyExtractor={(item) => item._id}
         renderItem={renderLandItem}
-        contentContainerStyle={{ paddingBottom: 80 }}
+        contentContainerStyle={styles.listContent}
+        showsVerticalScrollIndicator={false}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyIcon}>🌾</Text>
-            <Text style={styles.emptyText}>No plots added yet</Text>
-            <Text style={styles.emptySubtext}>Tap + to trace your first land</Text>
+            <View style={styles.emptyIconBg}>
+              <Text style={styles.emptyIcon}>🌾</Text>
+            </View>
+            <Text style={styles.emptyTitle}>No Plots Added Yet</Text>
+            <Text style={styles.emptySubtitle}>Tap + to add your first land plot</Text>
           </View>
         }
       />
 
-      <TouchableOpacity style={styles.fab} onPress={() => { setEditingItem(null); resetForm(); setModalVisible(true); }}>
-        <Text style={styles.fabText}>+</Text>
+      {/* FAB */}
+      <TouchableOpacity 
+        style={styles.fab} 
+        onPress={() => { setEditingItem(null); resetForm(); setModalVisible(true); }}
+        activeOpacity={0.8}
+      >
+        <Text style={styles.fabIcon}>+</Text>
       </TouchableOpacity>
 
       {/* Map Picker Modal */}
@@ -486,143 +549,169 @@ export default function FarmProfileScreen() {
             {pickedLocation && <Marker coordinate={pickedLocation} />}
           </MapView>
           <View style={styles.mapActions}>
-             <TouchableOpacity style={[styles.button, styles.cancelButton, {flex: 0, paddingHorizontal: 15}]} onPress={() => setMapPickerVisible(false)}>
-               <Text style={styles.buttonText}>Cancel</Text>
-             </TouchableOpacity>
-             <TouchableOpacity style={[styles.button, {backgroundColor: '#2196f3', flex: 0, paddingHorizontal: 15}]} onPress={fetchCurrentLocation}>
-               <Text style={styles.buttonText}>My Location</Text>
-             </TouchableOpacity>
-             <TouchableOpacity style={[styles.button, styles.saveButton, {flex: 0, paddingHorizontal: 15}]} onPress={confirmMapPick}>
-               <Text style={styles.buttonText}>Confirm GPS</Text>
-             </TouchableOpacity>
+            <TouchableOpacity style={[styles.mapBtn, styles.cancelBtn]} onPress={() => setMapPickerVisible(false)}>
+              <Text style={styles.cancelBtnText}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.mapBtn, { backgroundColor: colors.info }]} onPress={fetchCurrentLocation}>
+              <Text style={styles.primaryBtnText}>My Location</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.mapBtn, styles.primaryBtn]} onPress={confirmMapPick}>
+              <Text style={styles.primaryBtnText}>Confirm</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
 
       {/* Edit Land Modal */}
       <Modal animationType="slide" transparent visible={modalVisible}>
-        <View style={styles.modalContainer}>
-          <ScrollView contentContainerStyle={styles.modalContent}>
-            <Text style={styles.modalTitle}>{editingItem ? 'Edit Land' : 'Add New Land'}</Text>
-
-            <TextInput placeholderTextColor="#666"
-              style={styles.input}
-              placeholder="Location Name"
-              value={formData.location}
-              onChangeText={(text) => setFormData({ ...formData, location: text })}
-            />
-
-            <View style={styles.mapInputRow}>
-              <TextInput placeholderTextColor="#666"
-                style={[styles.input, { flex: 1, marginBottom: 0, marginRight: 10 }]}
-                placeholder="Map Link or GPS (Lat,Lng)"
-                value={formData.mapLink}
-                onChangeText={(text) => setFormData({ ...formData, mapLink: text })}
-              />
-              <TouchableOpacity style={[styles.pickMapBtn, {marginRight: 8}]} onPress={fetchCurrentLocation}>
-                <Text style={{fontSize: 20}}>📍</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.pickMapBtn} onPress={() => setMapPickerVisible(true)}>
-                <Text style={{fontSize: 20}}>🗺️</Text>
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.gridRow}>
-               <TextInput placeholderTextColor="#666"
-                 style={[styles.input, { flex: 1, marginRight: 5 }]}
-                 placeholder="Size (acres)"
-                 keyboardType="numeric"
-                 value={formData.size.value}
-                 onChangeText={(text) => setFormData({ ...formData, size: { ...formData.size, value: text.replace(/[^0-9.]/g, '').replace(/(\..*?)\..*/g, '$1') } })}
-               />
-               <TextInput placeholderTextColor="#666"
-                 style={[styles.input, { flex: 1, marginLeft: 5 }]}
-                 placeholder="Status (active/fallow)"
-                 value={formData.status}
-                 onChangeText={(text) => setFormData({ ...formData, status: text })}
-               />
-            </View>
-            
-            <Text style={styles.sectionLabel}>Soil Type</Text>
-            <View style={styles.categoryContainer}>
-              {['clay', 'sandy', 'red soil', 'other'].map((type) => (
-                <TouchableOpacity
-                  key={type}
-                  style={[
-                    styles.categoryOption,
-                    (formData.soilType === type || (type === 'other' && !['clay', 'sandy', 'red soil'].includes(formData.soilType) && formData.soilType !== '')) && styles.categoryOptionSelected
-                  ]}
-                  onPress={() => {
-                    if (type === 'other') {
-                      if (['clay', 'sandy', 'red soil'].includes(formData.soilType)) {
-                        setFormData({ ...formData, soilType: '' });
-                      }
-                    } else {
-                      setFormData({ ...formData, soilType: type });
-                    }
-                  }}
-                >
-                  <Text style={[
-                    styles.categoryOptionText,
-                    (formData.soilType === type || (type === 'other' && !['clay', 'sandy', 'red soil'].includes(formData.soilType) && formData.soilType !== '')) && styles.categoryOptionTextSelected
-                  ]}>
-                    {type.charAt(0).toUpperCase() + type.slice(1)}
-                  </Text>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <ScrollView contentContainerStyle={styles.modalContent} showsVerticalScrollIndicator={false}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>{editingItem ? 'Edit Land' : 'Add New Land'}</Text>
+                <TouchableOpacity onPress={() => { setModalVisible(false); setEditingItem(null); resetForm(); }} style={styles.modalCloseBtn}>
+                  <Text style={styles.modalCloseBtnText}>✕</Text>
                 </TouchableOpacity>
-              ))}
-            </View>
+              </View>
 
-            {(!['clay', 'sandy', 'red soil'].includes(formData.soilType) || formData.soilType === 'other') && (
+              <Text style={styles.inputLabel}>Location Name</Text>
               <TextInput 
-                placeholderTextColor="#666"
+                placeholderTextColor={colors.textHint}
                 style={styles.input}
-                placeholder="Type soil type here..."
-                value={['clay', 'sandy', 'red soil'].includes(formData.soilType) ? '' : formData.soilType}
-                onChangeText={(text) => setFormData({ ...formData, soilType: text })}
+                placeholder="e.g., North Field"
+                value={formData.location}
+                onChangeText={(text) => setFormData({ ...formData, location: text })}
               />
-            )}
 
-            <Text style={styles.sectionLabel}>Soil Nutrients</Text>
-            <View style={styles.gridRow}>
-              <TextInput placeholderTextColor="#666"
-                style={[styles.input, styles.gridInput]}
-                placeholder="N"
-                keyboardType="numeric"
-                value={formData.soilDetails.nitrogen}
-                onChangeText={(text) => setFormData({ ...formData, soilDetails: { ...formData.soilDetails, nitrogen: text.replace(/[^0-9.]/g, '').replace(/(\..*?)\..*/g, '$1') } })}
-              />
-              <TextInput placeholderTextColor="#666"
-                style={[styles.input, styles.gridInput]}
-                placeholder="P"
-                keyboardType="numeric"
-                value={formData.soilDetails.phosphorus}
-                onChangeText={(text) => setFormData({ ...formData, soilDetails: { ...formData.soilDetails, phosphorus: text.replace(/[^0-9.]/g, '').replace(/(\..*?)\..*/g, '$1') } })}
-              />
-              <TextInput placeholderTextColor="#666"
-                style={[styles.input, styles.gridInput]}
-                placeholder="K"
-                keyboardType="numeric"
-                value={formData.soilDetails.potassium}
-                onChangeText={(text) => setFormData({ ...formData, soilDetails: { ...formData.soilDetails, potassium: text.replace(/[^0-9.]/g, '').replace(/(\..*?)\..*/g, '$1') } })}
-              />
-              <TextInput placeholderTextColor="#666"
-                style={[styles.input, styles.gridInput]}
-                placeholder="pH"
-                keyboardType="numeric"
-                value={formData.soilDetails.ph}
-                onChangeText={(text) => setFormData({ ...formData, soilDetails: { ...formData.soilDetails, ph: text.replace(/[^0-9.]/g, '').replace(/(\..*?)\..*/g, '$1') } })}
-              />
-            </View>
+              <Text style={styles.inputLabel}>GPS Location</Text>
+              <View style={styles.gpsInputRow}>
+                <TextInput 
+                  placeholderTextColor={colors.textHint}
+                  style={[styles.input, { flex: 1, marginBottom: 0 }]}
+                  placeholder="Map Link or Coordinates"
+                  value={formData.mapLink}
+                  onChangeText={(text) => setFormData({ ...formData, mapLink: text })}
+                />
+                <TouchableOpacity style={styles.gpsBtn} onPress={fetchCurrentLocation}>
+                  <Text style={styles.gpsBtnText}>📍</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.gpsBtn} onPress={() => setMapPickerVisible(true)}>
+                  <Text style={styles.gpsBtnText}>🗺️</Text>
+                </TouchableOpacity>
+              </View>
 
-            <View style={styles.modalButtons}>
-              <TouchableOpacity style={[styles.button, styles.cancelButton]} onPress={() => { setModalVisible(false); setEditingItem(null); resetForm(); }}>
-                <Text style={styles.buttonText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.button, styles.saveButton]} onPress={editingItem ? updateLand : createLand}>
-                <Text style={styles.buttonText}>{editingItem ? 'Update' : 'Save'}</Text>
-              </TouchableOpacity>
-            </View>
-          </ScrollView>
+              <View style={styles.rowInputs}>
+                <View style={{ flex: 1, marginRight: spacing.sm }}>
+                  <Text style={styles.inputLabel}>Size (acres)</Text>
+                  <TextInput 
+                    placeholderTextColor={colors.textHint}
+                    style={styles.input}
+                    placeholder="0"
+                    keyboardType="numeric"
+                    value={formData.size.value}
+                    onChangeText={(text) => setFormData({ ...formData, size: { ...formData.size, value: text.replace(/[^0-9.]/g, '').replace(/(\..*?)\..*/g, '$1') } })}
+                  />
+                </View>
+                <View style={{ flex: 1, marginLeft: spacing.sm }}>
+                  <Text style={styles.inputLabel}>Status</Text>
+                  <View style={styles.statusToggle}>
+                    {['active', 'fallow'].map((status) => (
+                      <TouchableOpacity
+                        key={status}
+                        style={[styles.statusToggleBtn, formData.status === status && styles.statusToggleBtnActive]}
+                        onPress={() => setFormData({ ...formData, status })}
+                      >
+                        <Text style={[styles.statusToggleBtnText, formData.status === status && styles.statusToggleBtnTextActive]}>
+                          {status.charAt(0).toUpperCase() + status.slice(1)}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+              </View>
+              
+              <Text style={styles.inputLabel}>Soil Type</Text>
+              <View style={styles.soilTypeOptions}>
+                {['clay', 'sandy', 'red soil', 'other'].map((type) => (
+                  <TouchableOpacity
+                    key={type}
+                    style={[styles.soilTypeOption, formData.soilType === type && styles.soilTypeOptionSelected]}
+                    onPress={() => setFormData({ ...formData, soilType: type })}
+                  >
+                    <Text style={[styles.soilTypeOptionText, formData.soilType === type && styles.soilTypeOptionTextSelected]}>
+                      {type.charAt(0).toUpperCase() + type.slice(1)}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {formData.soilType === 'other' && (
+                <TextInput 
+                  placeholderTextColor={colors.textHint}
+                  style={styles.input}
+                  placeholder="Enter custom soil type"
+                  onChangeText={(text) => setFormData({ ...formData, soilType: text || 'other' })}
+                />
+              )}
+
+              <Text style={styles.inputLabel}>Soil Nutrients</Text>
+              <View style={styles.nutrientInputs}>
+                <View style={styles.nutrientInputItem}>
+                  <Text style={styles.nutrientInputLabel}>N</Text>
+                  <TextInput 
+                    placeholderTextColor={colors.textHint}
+                    style={styles.nutrientInput}
+                    placeholder="0"
+                    keyboardType="numeric"
+                    value={formData.soilDetails.nitrogen}
+                    onChangeText={(text) => setFormData({ ...formData, soilDetails: { ...formData.soilDetails, nitrogen: text.replace(/[^0-9.]/g, '').replace(/(\..*?)\..*/g, '$1') } })}
+                  />
+                </View>
+                <View style={styles.nutrientInputItem}>
+                  <Text style={styles.nutrientInputLabel}>P</Text>
+                  <TextInput 
+                    placeholderTextColor={colors.textHint}
+                    style={styles.nutrientInput}
+                    placeholder="0"
+                    keyboardType="numeric"
+                    value={formData.soilDetails.phosphorus}
+                    onChangeText={(text) => setFormData({ ...formData, soilDetails: { ...formData.soilDetails, phosphorus: text.replace(/[^0-9.]/g, '').replace(/(\..*?)\..*/g, '$1') } })}
+                  />
+                </View>
+                <View style={styles.nutrientInputItem}>
+                  <Text style={styles.nutrientInputLabel}>K</Text>
+                  <TextInput 
+                    placeholderTextColor={colors.textHint}
+                    style={styles.nutrientInput}
+                    placeholder="0"
+                    keyboardType="numeric"
+                    value={formData.soilDetails.potassium}
+                    onChangeText={(text) => setFormData({ ...formData, soilDetails: { ...formData.soilDetails, potassium: text.replace(/[^0-9.]/g, '').replace(/(\..*?)\..*/g, '$1') } })}
+                  />
+                </View>
+                <View style={styles.nutrientInputItem}>
+                  <Text style={styles.nutrientInputLabel}>pH</Text>
+                  <TextInput 
+                    placeholderTextColor={colors.textHint}
+                    style={styles.nutrientInput}
+                    placeholder="7"
+                    keyboardType="numeric"
+                    value={formData.soilDetails.ph}
+                    onChangeText={(text) => setFormData({ ...formData, soilDetails: { ...formData.soilDetails, ph: text.replace(/[^0-9.]/g, '').replace(/(\..*?)\..*/g, '$1') } })}
+                  />
+                </View>
+              </View>
+
+              <View style={styles.modalActions}>
+                <TouchableOpacity style={[styles.modalBtn, styles.cancelBtn]} onPress={() => { setModalVisible(false); setEditingItem(null); resetForm(); }}>
+                  <Text style={styles.cancelBtnText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.modalBtn, styles.primaryBtn]} onPress={editingItem ? updateLand : createLand}>
+                  <Text style={styles.primaryBtnText}>{editingItem ? 'Update' : 'Save'}</Text>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+          </View>
         </View>
       </Modal>
     </View>
@@ -630,23 +719,29 @@ export default function FarmProfileScreen() {
 
   if (loading) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color="#2e7d32" />
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={styles.loadingText}>Loading...</Text>
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
+      {/* Tab Header */}
       <View style={styles.tabHeader}>
         <TouchableOpacity 
           style={[styles.tabBtn, activeTab === 'profile' && styles.tabBtnActive]} 
-          onPress={() => setActiveTab('profile')}>
+          onPress={() => setActiveTab('profile')}
+          activeOpacity={0.7}
+        >
           <Text style={[styles.tabBtnText, activeTab === 'profile' && styles.tabBtnTextActive]}>Farmer Profile</Text>
         </TouchableOpacity>
         <TouchableOpacity 
           style={[styles.tabBtn, activeTab === 'lands' && styles.tabBtnActive]} 
-          onPress={() => setActiveTab('lands')}>
+          onPress={() => setActiveTab('lands')}
+          activeOpacity={0.7}
+        >
           <Text style={[styles.tabBtnText, activeTab === 'lands' && styles.tabBtnTextActive]}>Land Plots</Text>
         </TouchableOpacity>
       </View>
@@ -657,71 +752,526 @@ export default function FarmProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f5f5f5' },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  tabHeader: { flexDirection: 'row', backgroundColor: '#fff', elevation: 2 },
-  tabBtn: { flex: 1, padding: 15, alignItems: 'center', borderBottomWidth: 3, borderBottomColor: 'transparent' },
-  tabBtnActive: { borderBottomColor: '#2e7d32' },
-  tabBtnText: { fontSize: 16, color: '#666', fontWeight: 'bold' },
-  tabBtnTextActive: { color: '#2e7d32' },
-  tabContent: { padding: 15 },
-  statsContainer: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 15 },
-  statBox: { flex: 1, backgroundColor: '#2e7d32', padding: 20, borderRadius: 10, alignItems: 'center', marginHorizontal: 5 },
-  statValue: { fontSize: 24, fontWeight: 'bold', color: '#fff' },
-  statLabel: { fontSize: 14, color: '#e8f5e9', marginTop: 5 },
-  
-  profilePicContainer: { alignItems: 'center', marginBottom: 20, marginTop: 10 },
-  profilePicWrapper: { position: 'relative', width: 100, height: 100 },
-  profilePic: { width: 100, height: 100, borderRadius: 50, borderWidth: 3, borderColor: '#2e7d32' },
-  profilePicPlaceholder: { width: 100, height: 100, borderRadius: 50, backgroundColor: '#c8e6c9', justifyContent: 'center', alignItems: 'center', borderWidth: 3, borderColor: '#2e7d32' },
-  profilePicInitials: { fontSize: 40, fontWeight: 'bold', color: '#2e7d32' },
-  editIconBadge: { position: 'absolute', bottom: 0, right: 0, backgroundColor: '#2e7d32', padding: 6, borderRadius: 15, borderWidth: 2, borderColor: '#fff' },
+  container: { 
+    flex: 1, 
+    backgroundColor: colors.background,
+  },
+  loadingContainer: { 
+    flex: 1, 
+    justifyContent: 'center', 
+    alignItems: 'center',
+    backgroundColor: colors.background,
+  },
+  loadingText: {
+    marginTop: spacing.md,
+    ...typography.body,
+    color: colors.textSecondary,
+  },
 
-  card: { backgroundColor: '#fff', margin: 10, padding: 15, borderRadius: 12, elevation: 2 },
-  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  location: { fontSize: 18, fontWeight: 'bold', color: '#333' },
-  badgeRow: { flexDirection: 'row', marginTop: 4 },
-  badge: { color: '#fff', fontSize: 10, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 10, fontWeight: 'bold' },
-  actionButtons: { flexDirection: 'row' },
-  actionButton: { padding: 5, marginLeft: 10 },
-  actionText: { fontSize: 18 },
-  sizeText: { fontSize: 14, color: '#666', marginTop: 5 },
-  soilText: { fontSize: 12, color: '#999', marginTop: 5 },
-  
-  resourceSummary: { flexDirection: 'row', marginTop: 12, borderTopWidth: 1, borderTopColor: '#f0f0f0', paddingTop: 10 },
-  resourceBadge: { backgroundColor: '#f5f5f5', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, marginRight: 8 },
-  resourceText: { fontSize: 11, fontWeight: 'bold', color: '#555' },
+  // Tab Header
+  tabHeader: { 
+    flexDirection: 'row', 
+    backgroundColor: colors.cardBackground,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.mediumGray,
+  },
+  tabBtn: { 
+    flex: 1, 
+    paddingVertical: spacing.lg, 
+    alignItems: 'center', 
+    borderBottomWidth: 3, 
+    borderBottomColor: 'transparent',
+  },
+  tabBtnActive: { 
+    borderBottomColor: colors.primary,
+  },
+  tabBtnText: { 
+    ...typography.button,
+    color: colors.textTertiary,
+  },
+  tabBtnTextActive: { 
+    color: colors.primary,
+  },
 
-  emptyContainer: { alignItems: 'center', marginTop: 100 },
-  emptyIcon: { fontSize: 60, marginBottom: 20 },
-  emptyText: { fontSize: 18, color: '#999' },
-  emptySubtext: { fontSize: 14, color: '#ccc', marginTop: 10 },
-  
-  fab: { position: 'absolute', bottom: 20, right: 20, backgroundColor: '#2e7d32', width: 56, height: 56, borderRadius: 28, justifyContent: 'center', alignItems: 'center', elevation: 5 },
-  fabText: { fontSize: 32, color: '#fff' },
-  
-  modalContainer: { flex: 1, justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.5)' },
-  modalContent: { backgroundColor: '#fff', margin: 20, padding: 20, borderRadius: 15 },
-  modalTitle: { fontSize: 24, fontWeight: 'bold', marginBottom: 20, textAlign: 'center', color: '#2e7d32' },
-  sectionLabel: { fontSize: 16, fontWeight: 'bold', color: '#333', marginTop: 10, marginBottom: 10 },
-  input: { borderWidth: 1, borderColor: '#ddd', padding: 12, borderRadius: 8, marginBottom: 12, fontSize: 16, color: '#212121', fontWeight: '500' },
-  gridRow: { flexDirection: 'row', justifyContent: 'space-between' },
-  gridInput: { flex: 1, marginHorizontal: 2 },
-  mapInputRow: { flexDirection: 'row', marginBottom: 12, alignItems: 'center' },
-  pickMapBtn: { backgroundColor: '#e0e0e0', padding: 12, borderRadius: 8, justifyContent: 'center', alignItems: 'center' },
-  
-  modalButtons: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 20 },
-  button: { flex: 1, padding: 14, borderRadius: 8, marginHorizontal: 5, alignItems: 'center' },
-  cancelButton: { backgroundColor: '#999' },
-  saveButton: { backgroundColor: '#2e7d32', paddingVertical: 14 },
-  dangerButton: { backgroundColor: '#f44336', padding: 14, borderRadius: 8, alignItems: 'center', margin: 10 },
-  buttonText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
+  // Tab Content
+  tabContent: { 
+    flex: 1,
+    padding: spacing.md,
+  },
 
-  mapActions: { position: 'absolute', bottom: 20, left: 20, right: 20, flexDirection: 'row', justifyContent: 'space-between' },
+  // Stats Container
+  statsContainer: { 
+    flexDirection: 'row', 
+    marginBottom: spacing.lg,
+  },
+  statCard: { 
+    flex: 1, 
+    backgroundColor: colors.cardBackground, 
+    padding: spacing.lg, 
+    borderRadius: borderRadius.lg, 
+    alignItems: 'center', 
+    marginHorizontal: spacing.xs,
+    ...shadows.sm,
+  },
+  statIconBg: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: colors.primaryMuted,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+  statIcon: {
+    fontSize: 24,
+  },
+  statValue: { 
+    ...typography.h2,
+    color: colors.primary,
+  },
+  statLabel: { 
+    ...typography.caption,
+    color: colors.textTertiary,
+    marginTop: spacing.xs,
+  },
 
-  categoryContainer: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 12 },
-  categoryOption: { paddingHorizontal: 15, paddingVertical: 10, borderRadius: 20, backgroundColor: '#e0e0e0', margin: 4 },
-  categoryOptionSelected: { backgroundColor: '#2e7d32' },
-  categoryOptionText: { fontSize: 14, color: '#333', fontWeight: 'bold' },
-  categoryOptionTextSelected: { color: '#fff' },
+  // Profile Picture
+  profilePicContainer: { 
+    alignItems: 'center', 
+    marginBottom: spacing.lg,
+    marginTop: spacing.sm,
+  },
+  profilePicWrapper: { 
+    position: 'relative', 
+    width: 100, 
+    height: 100,
+  },
+  profilePic: { 
+    width: 100, 
+    height: 100, 
+    borderRadius: 50, 
+    borderWidth: 3, 
+    borderColor: colors.primary,
+  },
+  profilePicPlaceholder: { 
+    width: 100, 
+    height: 100, 
+    borderRadius: 50, 
+    backgroundColor: colors.primaryMuted, 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    borderWidth: 3, 
+    borderColor: colors.primary,
+  },
+  profilePicInitials: { 
+    ...typography.display,
+    color: colors.primary,
+  },
+  editIconBadge: { 
+    position: 'absolute', 
+    bottom: 0, 
+    right: 0, 
+    backgroundColor: colors.primary, 
+    padding: spacing.sm, 
+    borderRadius: borderRadius.round, 
+    borderWidth: 2, 
+    borderColor: colors.cardBackground,
+  },
+  editIconText: {
+    fontSize: 12,
+  },
+  profilePicHint: {
+    ...typography.caption,
+    color: colors.textHint,
+    marginTop: spacing.sm,
+  },
+
+  // Card
+  card: { 
+    backgroundColor: colors.cardBackground, 
+    padding: spacing.lg, 
+    borderRadius: borderRadius.lg,
+    ...shadows.sm,
+    marginBottom: spacing.md,
+  },
+  sectionTitle: {
+    ...typography.h4,
+    color: colors.textPrimary,
+    marginBottom: spacing.lg,
+  },
+
+  // Form
+  inputLabel: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginBottom: spacing.xs,
+    marginTop: spacing.md,
+  },
+  input: { 
+    borderWidth: 1, 
+    borderColor: colors.mediumGray, 
+    backgroundColor: colors.inputBackground,
+    padding: spacing.md, 
+    borderRadius: borderRadius.md, 
+    ...typography.body,
+    color: colors.textPrimary,
+    marginBottom: spacing.sm,
+  },
+
+  // Save Button
+  saveBtn: { 
+    backgroundColor: colors.primary, 
+    paddingVertical: spacing.lg, 
+    borderRadius: borderRadius.md, 
+    alignItems: 'center',
+    marginTop: spacing.lg,
+  },
+  saveBtnText: { 
+    ...typography.button,
+    color: colors.textLight,
+  },
+
+  // Change Password Button
+  changePasswordBtn: { 
+    flexDirection: 'row',
+    backgroundColor: colors.cardBackground,
+    padding: spacing.lg, 
+    borderRadius: borderRadius.md, 
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.error,
+  },
+  changePasswordIcon: {
+    fontSize: 16,
+    marginRight: spacing.sm,
+  },
+  changePasswordText: { 
+    ...typography.button,
+    color: colors.error,
+  },
+
+  // Land Card
+  landCard: { 
+    backgroundColor: colors.cardBackground, 
+    marginBottom: spacing.md, 
+    padding: spacing.lg, 
+    borderRadius: borderRadius.lg,
+    ...shadows.sm,
+  },
+  landCardHeader: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'flex-start',
+    marginBottom: spacing.md,
+  },
+  landCardTitleSection: {
+    flex: 1,
+  },
+  landLocation: { 
+    ...typography.h4,
+    color: colors.textPrimary,
+    marginBottom: spacing.xs,
+  },
+  badgeRow: { 
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  statusBadge: { 
+    paddingHorizontal: spacing.sm, 
+    paddingVertical: spacing.xs, 
+    borderRadius: borderRadius.sm,
+    marginRight: spacing.xs,
+  },
+  statusBadgeText: { 
+    ...typography.overline,
+    fontSize: 9,
+  },
+  soilBadge: { 
+    backgroundColor: colors.soil,
+    paddingHorizontal: spacing.sm, 
+    paddingVertical: spacing.xs, 
+    borderRadius: borderRadius.sm,
+  },
+  soilBadgeText: { 
+    ...typography.overline,
+    fontSize: 9,
+    color: colors.textLight,
+  },
+  actionButtons: { 
+    flexDirection: 'row',
+  },
+  actionBtn: { 
+    padding: spacing.sm,
+    marginLeft: spacing.xs,
+    backgroundColor: colors.backgroundAlt,
+    borderRadius: borderRadius.sm,
+  },
+  deleteBtn: {
+    backgroundColor: colors.errorLight,
+  },
+  actionIcon: { 
+    fontSize: 14,
+  },
+
+  // Land Info
+  landCardInfo: {
+    marginBottom: spacing.md,
+  },
+  landInfoItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.xs,
+  },
+  landInfoIcon: {
+    fontSize: 14,
+    marginRight: spacing.sm,
+  },
+  landInfoText: {
+    ...typography.bodySmall,
+    color: colors.textSecondary,
+  },
+
+  // Resource Summary
+  resourceSummary: { 
+    flexDirection: 'row', 
+    borderTopWidth: 1, 
+    borderTopColor: colors.lightGray, 
+    paddingTop: spacing.md,
+  },
+  resourceBadge: { 
+    backgroundColor: colors.backgroundAlt, 
+    paddingHorizontal: spacing.sm, 
+    paddingVertical: spacing.xs, 
+    borderRadius: borderRadius.sm, 
+    marginRight: spacing.sm,
+  },
+  resourceBadgeText: { 
+    ...typography.caption,
+    color: colors.textSecondary,
+  },
+
+  // Empty State
+  emptyContainer: { 
+    alignItems: 'center', 
+    marginTop: 80,
+  },
+  emptyIconBg: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: colors.primaryMuted,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: spacing.lg,
+  },
+  emptyIcon: { 
+    fontSize: 48,
+  },
+  emptyTitle: { 
+    ...typography.h4,
+    color: colors.textPrimary,
+    marginBottom: spacing.xs,
+  },
+  emptySubtitle: { 
+    ...typography.body,
+    color: colors.textTertiary,
+  },
+  
+  // FAB
+  fab: { 
+    position: 'absolute', 
+    bottom: 24, 
+    right: 24, 
+    backgroundColor: colors.primary, 
+    width: 60, 
+    height: 60, 
+    borderRadius: 30, 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    ...shadows.lg,
+  },
+  fabIcon: { 
+    fontSize: 32, 
+    color: colors.textLight,
+    marginTop: -2,
+  },
+
+  // List
+  listContent: {
+    padding: spacing.md,
+    paddingBottom: 100,
+  },
+  
+  // Modal
+  modalOverlay: { 
+    flex: 1, 
+    justifyContent: 'center', 
+    backgroundColor: colors.overlay,
+  },
+  modalContainer: { 
+    backgroundColor: colors.cardBackground, 
+    margin: spacing.lg, 
+    borderRadius: borderRadius.xl,
+    maxHeight: '85%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.lg,
+  },
+  modalTitle: { 
+    ...typography.h3,
+    color: colors.primary,
+  },
+  modalCloseBtn: {
+    padding: spacing.sm,
+  },
+  modalCloseBtnText: {
+    fontSize: 20,
+    color: colors.textTertiary,
+  },
+  modalContent: { 
+    padding: spacing.lg,
+  },
+  modalActions: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    marginTop: spacing.xl,
+  },
+  modalBtn: { 
+    flex: 1, 
+    padding: spacing.lg, 
+    borderRadius: borderRadius.md, 
+    marginHorizontal: spacing.xs, 
+    alignItems: 'center',
+  },
+  cancelBtn: { 
+    backgroundColor: colors.lightGray,
+  },
+  cancelBtnText: { 
+    ...typography.button,
+    color: colors.textSecondary,
+  },
+  primaryBtn: { 
+    backgroundColor: colors.primary,
+  },
+  primaryBtnText: { 
+    ...typography.button,
+    color: colors.textLight,
+  },
+
+  // GPS Input
+  gpsInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+  gpsBtn: {
+    backgroundColor: colors.backgroundAlt,
+    padding: spacing.md,
+    borderRadius: borderRadius.md,
+    marginLeft: spacing.sm,
+  },
+  gpsBtnText: {
+    fontSize: 18,
+  },
+
+  // Row Inputs
+  rowInputs: {
+    flexDirection: 'row',
+  },
+
+  // Status Toggle
+  statusToggle: {
+    flexDirection: 'row',
+    backgroundColor: colors.lightGray,
+    borderRadius: borderRadius.md,
+    padding: spacing.xs,
+  },
+  statusToggleBtn: {
+    flex: 1,
+    paddingVertical: spacing.sm,
+    alignItems: 'center',
+    borderRadius: borderRadius.sm,
+  },
+  statusToggleBtnActive: {
+    backgroundColor: colors.cardBackground,
+    ...shadows.xs,
+  },
+  statusToggleBtnText: {
+    ...typography.buttonSmall,
+    color: colors.textTertiary,
+  },
+  statusToggleBtnTextActive: {
+    color: colors.primary,
+  },
+
+  // Soil Type Options
+  soilTypeOptions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginTop: spacing.sm,
+  },
+  soilTypeOption: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.round,
+    backgroundColor: colors.lightGray,
+    marginRight: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  soilTypeOptionSelected: {
+    backgroundColor: colors.primaryMuted,
+  },
+  soilTypeOptionText: {
+    ...typography.buttonSmall,
+    color: colors.textSecondary,
+  },
+  soilTypeOptionTextSelected: {
+    color: colors.primary,
+  },
+
+  // Nutrient Inputs
+  nutrientInputs: {
+    flexDirection: 'row',
+    marginTop: spacing.sm,
+  },
+  nutrientInputItem: {
+    flex: 1,
+    marginHorizontal: spacing.xs,
+  },
+  nutrientInputLabel: {
+    ...typography.caption,
+    color: colors.textTertiary,
+    textAlign: 'center',
+    marginBottom: spacing.xs,
+  },
+  nutrientInput: {
+    borderWidth: 1,
+    borderColor: colors.mediumGray,
+    backgroundColor: colors.inputBackground,
+    padding: spacing.sm,
+    borderRadius: borderRadius.md,
+    textAlign: 'center',
+    ...typography.body,
+    color: colors.textPrimary,
+  },
+
+  // Map Actions
+  mapActions: { 
+    position: 'absolute', 
+    bottom: 30, 
+    left: spacing.lg, 
+    right: spacing.lg, 
+    flexDirection: 'row', 
+    justifyContent: 'space-between',
+  },
+  mapBtn: {
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderRadius: borderRadius.md,
+  },
 });

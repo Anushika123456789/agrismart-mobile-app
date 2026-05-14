@@ -11,10 +11,12 @@ import {
   ActivityIndicator,
   ScrollView,
   Platform,
+  Animated,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { taskService, inventoryService, landService, machineryService } from '../services/api';
+import { colors, spacing, borderRadius, typography, shadows } from '../styles/colors';
 
 export default function TaskScreen() {
   const [tasks, setTasks] = useState([]);
@@ -73,6 +75,12 @@ export default function TaskScreen() {
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
+  };
+
+  const formatDisplayDate = (dateStr) => {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   };
 
   const getTodayWithoutTime = () => {
@@ -225,8 +233,6 @@ export default function TaskScreen() {
       const today = getTodayWithoutTime();
       const selectedDueDate = new Date(taskForm.dueDate.getFullYear(), taskForm.dueDate.getMonth(), taskForm.dueDate.getDate());
 
-      // Only validate if the user changed the due date to something not ahead of today
-      // To allow editing old tasks that already have a past deadline.
       if (editingItem && editingItem.dueDate) {
         const originalDueDate = new Date(editingItem.dueDate);
         const originalDueWithoutTime = new Date(originalDueDate.getFullYear(), originalDueDate.getMonth(), originalDueDate.getDate());
@@ -331,21 +337,21 @@ export default function TaskScreen() {
 
   const getPriorityStyle = (priority) => {
     const stylesMap = {
-      high: { bg: '#f44336', text: 'High' },
-      medium: { bg: '#ff9800', text: 'Medium' },
-      low: { bg: '#4caf50', text: 'Low' },
-      urgent: { bg: '#9c27b0', text: 'Urgent' },
+      high: { bg: colors.error, lightBg: colors.errorLight, text: 'High' },
+      medium: { bg: colors.warning, lightBg: colors.warningLight, text: 'Medium' },
+      low: { bg: colors.success, lightBg: colors.successLight, text: 'Low' },
+      urgent: { bg: '#9b59b6', lightBg: '#f5eef8', text: 'Urgent' },
     };
     return stylesMap[priority] || stylesMap.medium;
   };
 
   const getStatusStyle = (status) => {
     const smap = {
-      pending: { bg: '#fff3e0', text: '#ef6c00' },
-      'in-progress': { bg: '#e3f2fd', text: '#1565c0' },
-      completed: { bg: '#e8f5e9', text: '#2e7d32' },
-      delayed: { bg: '#ffebee', text: '#c62828' },
-      cancelled: { bg: '#f5f5f5', text: '#616161' },
+      pending: { bg: colors.warningLight, color: colors.warning, icon: '⏳' },
+      'in-progress': { bg: colors.infoLight, color: colors.info, icon: '🔄' },
+      completed: { bg: colors.successLight, color: colors.success, icon: '✓' },
+      delayed: { bg: colors.errorLight, color: colors.error, icon: '⚠' },
+      cancelled: { bg: colors.lightGray, color: colors.darkGray, icon: '✕' },
     };
     return smap[status] || smap.pending;
   };
@@ -389,7 +395,6 @@ export default function TaskScreen() {
   };
 
   const filteredTasks = tasks.filter(t => {
-    // Status filter
     let statusMatch = false;
     if (activeTab === 'All') statusMatch = true;
     else if (activeTab === 'Overdue') {
@@ -399,14 +404,12 @@ export default function TaskScreen() {
       statusMatch = t.status === activeTab;
     }
 
-    // Worker filter
     let workerMatch = true;
     if (activeWorkerFilter !== 'All') {
       const tworkerId = t.assignedTo?._id || t.assignedTo;
       workerMatch = (tworkerId === activeWorkerFilter);
     }
 
-    // Land filter
     let landMatch = true;
     if (activeLandFilter !== 'All') {
       const tlandId = t.landId?._id || t.landId;
@@ -423,163 +426,232 @@ export default function TaskScreen() {
 
     return (
       <View style={[styles.card, isOverdue && styles.overdueCard]}>
-        <View style={styles.taskHeader}>
-          <Text style={styles.taskTitle}>{item.title}</Text>
-          <View style={styles.taskHeaderRight}>
-            <View style={[styles.priorityBadge, { backgroundColor: priorityStyle.bg, marginRight: 5 }]}>
-              <Text style={styles.priorityText}>{priorityStyle.text}</Text>
-            </View>
-            <View style={[styles.statusBadge, { backgroundColor: statusStyle.bg }]}>
-              <Text style={[styles.statusText, { color: statusStyle.text }]}>{item.status.toUpperCase()}</Text>
+        {/* Header */}
+        <View style={styles.cardHeader}>
+          <View style={styles.cardTitleSection}>
+            <Text style={styles.taskTitle} numberOfLines={2}>{item.title}</Text>
+            {isOverdue && (
+              <View style={styles.overdueBadge}>
+                <Text style={styles.overdueText}>OVERDUE</Text>
+              </View>
+            )}
+          </View>
+          <View style={styles.badgeContainer}>
+            <View style={[styles.priorityBadge, { backgroundColor: priorityStyle.lightBg }]}>
+              <View style={[styles.priorityDot, { backgroundColor: priorityStyle.bg }]} />
+              <Text style={[styles.priorityText, { color: priorityStyle.bg }]}>{priorityStyle.text}</Text>
             </View>
           </View>
         </View>
 
-        {isOverdue && <Text style={styles.overdueBadge}>🚨 OVERDUE TASK</Text>}
+        {/* Status Chip */}
+        <View style={[styles.statusChip, { backgroundColor: statusStyle.bg }]}>
+          <Text style={[styles.statusText, { color: statusStyle.color }]}>
+            {statusStyle.icon} {item.status.charAt(0).toUpperCase() + item.status.slice(1).replace('-', ' ')}
+          </Text>
+        </View>
 
         {item.description ? <Text style={styles.taskDesc}>{item.description}</Text> : null}
 
-        <View style={styles.metaRowContainer}>
-          <View style={styles.metaBox}>
+        {/* Meta Info */}
+        <View style={styles.metaContainer}>
+          <View style={styles.metaItem}>
             <Text style={styles.metaIcon}>📅</Text>
-            <Text style={styles.taskMeta}>
-              {item.startDate ? String(item.startDate).split('T')[0] : 'Start'} ➔ {item.dueDate ? String(item.dueDate).split('T')[0] : 'End'}
+            <Text style={styles.metaText}>
+              {formatDisplayDate(item.startDate)} - {formatDisplayDate(item.dueDate) || 'No deadline'}
             </Text>
           </View>
-          <View style={styles.metaBox}>
+          <View style={styles.metaItem}>
             <Text style={styles.metaIcon}>👤</Text>
-            <Text style={styles.taskMeta}>{item.assignedTo?.name || 'Unassigned'}</Text>
+            <Text style={styles.metaText}>{item.assignedTo?.name || 'Unassigned'}</Text>
           </View>
           {item.landId && (
-            <View style={styles.metaBox}>
+            <View style={styles.metaItem}>
               <Text style={styles.metaIcon}>🌱</Text>
-              <Text style={styles.taskMeta}>{item.landId?.name || item.landId?.location || 'Land'}</Text>
+              <Text style={styles.metaText}>{item.landId?.name || item.landId?.location || 'Land'}</Text>
             </View>
           )}
         </View>
 
+        {/* Notes Section */}
         {item.notes ? (
-          <View style={styles.notesBox}>
-            <Text style={styles.notesTitle}>📝 Short Notes / Scouting:</Text>
+          <View style={styles.notesSection}>
+            <Text style={styles.notesLabel}>Notes</Text>
             <Text style={styles.notesText}>{item.notes}</Text>
           </View>
         ) : null}
 
+        {/* Materials */}
         {item.materialsUsed && item.materialsUsed.length > 0 && (
-          <View style={styles.materialsBox}>
-            <Text style={styles.materialsHeader}>📦 Required Materials:</Text>
-            {item.materialsUsed.map((m, idx) => {
-              const invItem = inventory.find(i => i._id === m.inventoryId);
-              return (
-                <Text key={idx} style={styles.materialItemText}>
-                  • {invItem ? invItem.name : 'Item'}: {m.quantity} {invItem?.unit || ''}
-                </Text>
-              );
-            })}
+          <View style={styles.resourceSection}>
+            <Text style={styles.resourceLabel}>Materials</Text>
+            <View style={styles.resourceChips}>
+              {item.materialsUsed.map((m, idx) => {
+                const invItem = inventory.find(i => i._id === m.inventoryId);
+                return (
+                  <View key={idx} style={styles.resourceChip}>
+                    <Text style={styles.resourceChipText}>{invItem ? invItem.name : 'Item'}: {m.quantity}</Text>
+                  </View>
+                );
+              })}
+            </View>
           </View>
         )}
 
+        {/* Machinery */}
         {item.machineryUsed && item.machineryUsed.length > 0 && (
-          <View style={styles.materialsBox}>
-            <Text style={styles.materialsHeader}>🚜 Machinery Used:</Text>
-            {item.machineryUsed.map((m, idx) => {
-              const machItem = machinery.find(i => i._id === m.machineryId);
-              return (
-                <Text key={idx} style={styles.materialItemText}>
-                  • {machItem ? machItem.name : 'Equipment'}
-                </Text>
-              );
-            })}
+          <View style={styles.resourceSection}>
+            <Text style={styles.resourceLabel}>Equipment</Text>
+            <View style={styles.resourceChips}>
+              {item.machineryUsed.map((m, idx) => {
+                const machItem = machinery.find(i => i._id === m.machineryId);
+                return (
+                  <View key={idx} style={[styles.resourceChip, { backgroundColor: colors.warningLight }]}>
+                    <Text style={[styles.resourceChipText, { color: colors.warning }]}>{machItem ? machItem.name : 'Equipment'}</Text>
+                  </View>
+                );
+              })}
+            </View>
           </View>
         )}
 
+        {/* Progress */}
         <View style={styles.progressSection}>
-          <Text style={styles.progressLabel}>Progress: {item.progress || 0}%</Text>
-          <View style={styles.progressBarContainer}>
+          <View style={styles.progressHeader}>
+            <Text style={styles.progressLabel}>Progress</Text>
+            <Text style={styles.progressValue}>{item.progress || 0}%</Text>
+          </View>
+          <View style={styles.progressBarBg}>
             <View style={[styles.progressBarFill, { width: `${item.progress || 0}%` }]} />
           </View>
         </View>
 
+        {/* Actions */}
         <View style={styles.cardActions}>
           {item.status !== 'completed' && item.status !== 'cancelled' && (
-            <TouchableOpacity style={[styles.actionBtnOutline, { borderColor: '#4caf50' }]} onPress={() => updateStatusQuick(item._id, 'completed')}>
-              <Text style={[styles.btnOutlineText, { color: '#4caf50' }]}>✓ Complete</Text>
+            <TouchableOpacity 
+              style={[styles.actionBtn, styles.completeBtn]} 
+              onPress={() => updateStatusQuick(item._id, 'completed')}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.completeBtnText}>Complete</Text>
             </TouchableOpacity>
           )}
-          <TouchableOpacity style={styles.actionBtnOutline} onPress={() => openEditModal(item)}>
-            <Text style={styles.btnOutlineText}>✏️ Edit & Update</Text>
+          <TouchableOpacity 
+            style={[styles.actionBtn, styles.editBtn]} 
+            onPress={() => openEditModal(item)}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.editBtnText}>Edit</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.actionBtnOutline, { borderColor: '#f44336' }]} onPress={() => deleteTask(item._id, item.title)}>
-            <Text style={[styles.btnOutlineText, { color: '#f44336' }]}>🗑️ Trash</Text>
+          <TouchableOpacity 
+            style={[styles.actionBtn, styles.deleteBtn]} 
+            onPress={() => deleteTask(item._id, item.title)}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.deleteBtnText}>Delete</Text>
           </TouchableOpacity>
         </View>
       </View>
     );
   };
 
-  if (loading) return <View style={styles.center}><ActivityIndicator size="large" color="#2e7d32" /></View>;
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={styles.loadingText}>Loading tasks...</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
-      {/* Filtering Navigation */}
-      <View style={styles.filterContainer}>
-        {/* Status Filters */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 8 }}>
+      {/* Filter Section */}
+      <View style={styles.filterSection}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
           {filterTabs.map((tab) => (
             <TouchableOpacity
               key={tab}
-              style={[styles.filterBtn, activeTab === tab && styles.filterBtnActive]}
+              style={[styles.filterTab, activeTab === tab && styles.filterTabActive]}
               onPress={() => setActiveTab(tab)}
+              activeOpacity={0.7}
             >
-              <Text style={[styles.filterText, activeTab === tab && styles.filterTextActive]}>
-                {tab.charAt(0).toUpperCase() + tab.slice(1)}
+              <Text style={[styles.filterTabText, activeTab === tab && styles.filterTabTextActive]}>
+                {tab === 'in-progress' ? 'In Progress' : tab.charAt(0).toUpperCase() + tab.slice(1)}
               </Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
-        {/* Worker Filters */}
-        <View style={styles.subFilterRow}>
-          <Text style={styles.subFilterLabel}>Worker: </Text>
+
+        {/* Worker Filter */}
+        <View style={styles.subFilter}>
+          <Text style={styles.subFilterLabel}>Worker</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <TouchableOpacity style={[styles.subFilterBtn, activeWorkerFilter === 'All' && styles.subFilterBtnActive]} onPress={() => setActiveWorkerFilter('All')}>
-              <Text style={[styles.subFilterText, activeWorkerFilter === 'All' && styles.subFilterTextActive]}>All</Text>
+            <TouchableOpacity 
+              style={[styles.subFilterChip, activeWorkerFilter === 'All' && styles.subFilterChipActive]} 
+              onPress={() => setActiveWorkerFilter('All')}
+            >
+              <Text style={[styles.subFilterChipText, activeWorkerFilter === 'All' && styles.subFilterChipTextActive]}>All</Text>
             </TouchableOpacity>
             {labors.map(lbl => (
-              <TouchableOpacity key={lbl._id} style={[styles.subFilterBtn, activeWorkerFilter === lbl._id && styles.subFilterBtnActive]} onPress={() => setActiveWorkerFilter(lbl._id)}>
-                <Text style={[styles.subFilterText, activeWorkerFilter === lbl._id && styles.subFilterTextActive]}>{lbl.name.split(' ')[0]}</Text>
+              <TouchableOpacity 
+                key={lbl._id} 
+                style={[styles.subFilterChip, activeWorkerFilter === lbl._id && styles.subFilterChipActive]} 
+                onPress={() => setActiveWorkerFilter(lbl._id)}
+              >
+                <Text style={[styles.subFilterChipText, activeWorkerFilter === lbl._id && styles.subFilterChipTextActive]}>
+                  {lbl.name.split(' ')[0]}
+                </Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
         </View>
-        {/* Land Filters */}
-        <View style={styles.subFilterRow}>
-          <Text style={styles.subFilterLabel}>Land: </Text>
+
+        {/* Land Filter */}
+        <View style={styles.subFilter}>
+          <Text style={styles.subFilterLabel}>Land</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <TouchableOpacity style={[styles.subFilterBtn, activeLandFilter === 'All' && styles.subFilterBtnActive]} onPress={() => setActiveLandFilter('All')}>
-              <Text style={[styles.subFilterText, activeLandFilter === 'All' && styles.subFilterTextActive]}>All</Text>
+            <TouchableOpacity 
+              style={[styles.subFilterChip, activeLandFilter === 'All' && styles.subFilterChipActive]} 
+              onPress={() => setActiveLandFilter('All')}
+            >
+              <Text style={[styles.subFilterChipText, activeLandFilter === 'All' && styles.subFilterChipTextActive]}>All</Text>
             </TouchableOpacity>
             {lands.map(lnd => (
-              <TouchableOpacity key={lnd._id} style={[styles.subFilterBtn, activeLandFilter === lnd._id && styles.subFilterBtnActive]} onPress={() => setActiveLandFilter(lnd._id)}>
-                <Text style={[styles.subFilterText, activeLandFilter === lnd._id && styles.subFilterTextActive]}>{lnd.name || lnd.location || `Plot ${lnd.plotNumber || 'Un-named'}`}</Text>
+              <TouchableOpacity 
+                key={lnd._id} 
+                style={[styles.subFilterChip, activeLandFilter === lnd._id && styles.subFilterChipActive]} 
+                onPress={() => setActiveLandFilter(lnd._id)}
+              >
+                <Text style={[styles.subFilterChipText, activeLandFilter === lnd._id && styles.subFilterChipTextActive]}>
+                  {lnd.name || lnd.location || 'Plot'}
+                </Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
         </View>
       </View>
 
+      {/* Tasks List */}
       <FlatList
         data={filteredTasks}
         keyExtractor={(item) => item._id}
         renderItem={renderTask}
-        contentContainerStyle={{ paddingBottom: 80 }}
+        contentContainerStyle={styles.listContent}
+        showsVerticalScrollIndicator={false}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyIcon}>✅</Text>
-            <Text style={styles.emptyText}>No tasks found for these filters</Text>
+            <View style={styles.emptyIconBg}>
+              <Text style={styles.emptyIcon}>✓</Text>
+            </View>
+            <Text style={styles.emptyTitle}>No Tasks Found</Text>
+            <Text style={styles.emptySubtitle}>Create a new task to get started</Text>
           </View>
         }
       />
 
+      {/* FAB */}
       <TouchableOpacity
         style={styles.fab}
         onPress={() => {
@@ -587,209 +659,258 @@ export default function TaskScreen() {
           setEditingItem(null);
           setModalVisible(true);
         }}
+        activeOpacity={0.8}
       >
-        <Text style={styles.fabText}>+</Text>
+        <Text style={styles.fabIcon}>+</Text>
       </TouchableOpacity>
 
+      {/* Modal */}
       <Modal animationType="slide" transparent visible={modalVisible}>
-        <View style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>{editingItem ? 'Edit Task' : 'Create New Task'}</Text>
-            <TouchableOpacity
-              onPress={() => { setModalVisible(false); resetTaskForm(); }}
-              style={{ padding: 10, marginRight: -10 }}
-            >
-              <Text style={styles.closeBtn}>✕</Text>
-            </TouchableOpacity>
-          </View>
-          <ScrollView contentContainerStyle={styles.modalContent} showsVerticalScrollIndicator={false}>
-
-            <Text style={styles.label}>Title</Text>
-            <TextInput placeholderTextColor="#666" style={styles.input} placeholder="Task Title" value={taskForm.title} onChangeText={(text) => handleTextChange('title', text)} />
-
-            <Text style={styles.label}>Description</Text>
-            <TextInput placeholderTextColor="#666" style={[styles.input, styles.textArea]} placeholder="What needs to be done?" multiline numberOfLines={3} value={taskForm.description} onChangeText={(text) => handleTextChange('description', text)} />
-
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.label}>Select Land</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.employeeContainer}>
-                  {lands.map((land) => (
-                    <TouchableOpacity key={land._id} style={[styles.employeeOption, taskForm.landId === land._id && styles.employeeOptionSelected]} onPress={() => setTaskForm({ ...taskForm, landId: land._id, assignedTo: '', materialsUsed: [], machineryUsed: [] })}>
-                      <Text style={[styles.employeeName, taskForm.landId === land._id && styles.employeeNameSelected]}>{land.name || land.location || `Plot ${land.plotNumber || 'Un-named'}`}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              </View>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>{editingItem ? 'Edit Task' : 'New Task'}</Text>
+              <TouchableOpacity
+                onPress={() => { setModalVisible(false); resetTaskForm(); }}
+                style={styles.modalCloseBtn}
+              >
+                <Text style={styles.modalCloseBtnText}>✕</Text>
+              </TouchableOpacity>
             </View>
+            
+            <ScrollView contentContainerStyle={styles.modalContent} showsVerticalScrollIndicator={false}>
+              <Text style={styles.inputLabel}>Title</Text>
+              <TextInput 
+                placeholderTextColor={colors.textHint}
+                style={styles.input} 
+                placeholder="Enter task title" 
+                value={taskForm.title} 
+                onChangeText={(text) => handleTextChange('title', text)} 
+              />
 
-            {!taskForm.landId && (
-              <Text style={{ color: '#f44336', fontSize: 13, marginBottom: 15, fontStyle: 'italic' }}>
-                * Please select a land plot first to assign employees, inventory, and machinery.
-              </Text>
-            )}
+              <Text style={styles.inputLabel}>Description</Text>
+              <TextInput 
+                placeholderTextColor={colors.textHint}
+                style={[styles.input, styles.textArea]} 
+                placeholder="What needs to be done?" 
+                multiline 
+                numberOfLines={3} 
+                value={taskForm.description} 
+                onChangeText={(text) => handleTextChange('description', text)} 
+              />
 
-            {taskForm.landId && (
-              <>
-                <Text style={styles.label}>Assign Employee</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.employeeContainer}>
-                  {labors.filter(labor => (labor.landId?._id || labor.landId) === taskForm.landId).length === 0 ? (
-                    <Text style={{ color: '#666', fontStyle: 'italic', paddingVertical: 8 }}>No employees assigned to this land plot.</Text>
-                  ) : labors.filter(labor => (labor.landId?._id || labor.landId) === taskForm.landId).map((labor) => (
-                    <TouchableOpacity key={labor._id} style={[styles.employeeOption, taskForm.assignedTo === labor._id && styles.employeeOptionSelected]} onPress={() => setTaskForm({ ...taskForm, assignedTo: labor._id })}>
-                      <Text style={[styles.employeeName, taskForm.assignedTo === labor._id && styles.employeeNameSelected]}>{labor.name.split(' ')[0]}</Text>
+              <Text style={styles.inputLabel}>Select Land Plot</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.optionScroll}>
+                {lands.map((land) => (
+                  <TouchableOpacity 
+                    key={land._id} 
+                    style={[styles.optionChip, taskForm.landId === land._id && styles.optionChipSelected]} 
+                    onPress={() => setTaskForm({ ...taskForm, landId: land._id, assignedTo: '', materialsUsed: [], machineryUsed: [] })}
+                  >
+                    <Text style={[styles.optionChipText, taskForm.landId === land._id && styles.optionChipTextSelected]}>
+                      {land.name || land.location || 'Plot'}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+
+              {!taskForm.landId && (
+                <Text style={styles.hintText}>Select a land plot first to assign workers and resources</Text>
+              )}
+
+              {taskForm.landId && (
+                <>
+                  <Text style={styles.inputLabel}>Assign Worker</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.optionScroll}>
+                    {labors.filter(labor => (labor.landId?._id || labor.landId) === taskForm.landId).length === 0 ? (
+                      <Text style={styles.emptyOptionText}>No workers on this land</Text>
+                    ) : labors.filter(labor => (labor.landId?._id || labor.landId) === taskForm.landId).map((labor) => (
+                      <TouchableOpacity 
+                        key={labor._id} 
+                        style={[styles.optionChip, taskForm.assignedTo === labor._id && styles.optionChipSelected]} 
+                        onPress={() => setTaskForm({ ...taskForm, assignedTo: labor._id })}
+                      >
+                        <Text style={[styles.optionChipText, taskForm.assignedTo === labor._id && styles.optionChipTextSelected]}>
+                          {labor.name.split(' ')[0]}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </>
+              )}
+
+              <Text style={styles.inputLabel}>Status</Text>
+              <View style={styles.statusOptions}>
+                {statuses.map((stat) => {
+                  const statStyle = getStatusStyle(stat);
+                  return (
+                    <TouchableOpacity 
+                      key={stat} 
+                      style={[
+                        styles.statusOption, 
+                        taskForm.status === stat && { backgroundColor: statStyle.bg, borderColor: statStyle.color }
+                      ]} 
+                      onPress={() => setTaskForm({ ...taskForm, status: stat })}
+                    >
+                      <Text style={[
+                        styles.statusOptionText, 
+                        taskForm.status === stat && { color: statStyle.color, fontWeight: '600' }
+                      ]}>
+                        {stat.charAt(0).toUpperCase() + stat.slice(1).replace('-', ' ')}
+                      </Text>
                     </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              </>
-            )}
+                  );
+                })}
+              </View>
 
-            <Text style={styles.label}>Status Updates</Text>
-            <View style={styles.priorityContainer}>
-              {statuses.map((stat) => (
-                <TouchableOpacity key={stat} style={[styles.priorityOption, taskForm.status === stat && { backgroundColor: getStatusStyle(stat).bg, borderWidth: 1, borderColor: getStatusStyle(stat).text }]} onPress={() => setTaskForm({ ...taskForm, status: stat })}>
-                  <Text style={[styles.priorityOptionText, taskForm.status === stat && { color: getStatusStyle(stat).text, fontWeight: 'bold' }]}>
-                    {stat.charAt(0).toUpperCase() + stat.slice(1)}
+              <Text style={styles.inputLabel}>Progress: {taskForm.progress}%</Text>
+              <View style={styles.progressOptions}>
+                {progressOptions.map(p => (
+                  <TouchableOpacity
+                    key={p}
+                    style={[styles.progressOption, taskForm.progress === p && styles.progressOptionSelected]}
+                    onPress={() => setTaskForm({ ...taskForm, progress: p })}
+                  >
+                    <Text style={[styles.progressOptionText, taskForm.progress === p && styles.progressOptionTextSelected]}>{p}%</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <Text style={styles.inputLabel}>Dates</Text>
+              <View style={styles.dateRow}>
+                <TouchableOpacity style={styles.dateInput} onPress={() => setPickerMode('start')}>
+                  <Text style={styles.dateIcon}>📅</Text>
+                  <Text style={taskForm.startDate ? styles.dateText : styles.datePlaceholder}>
+                    {taskForm.startDate ? formatDate(taskForm.startDate) : 'Start Date'}
                   </Text>
                 </TouchableOpacity>
-              ))}
-            </View>
-
-            <Text style={styles.label}>Progress Completion (%): {taskForm.progress}%</Text>
-            <View style={styles.progressSelectorRow}>
-              {progressOptions.map(p => (
-                <TouchableOpacity
-                  key={p}
-                  style={[styles.progressTick, taskForm.progress === p && styles.progressTickActive]}
-                  onPress={() => setTaskForm({ ...taskForm, progress: p })}
-                >
-                  <Text style={[styles.progressTickText, taskForm.progress === p && styles.progressTickTextActive]}>{p}%</Text>
+                <TouchableOpacity style={styles.dateInput} onPress={() => setPickerMode('due')}>
+                  <Text style={styles.dateIcon}>🏁</Text>
+                  <Text style={taskForm.dueDate ? styles.dateText : styles.datePlaceholder}>
+                    {taskForm.dueDate ? formatDate(taskForm.dueDate) : 'Deadline'}
+                  </Text>
                 </TouchableOpacity>
-              ))}
-            </View>
-
-            <Text style={styles.label}>Date / Deadline</Text>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              <TouchableOpacity style={[styles.dateInput, { flex: 1, marginRight: 5, flexDirection: 'row', alignItems: 'center' }]} onPress={() => setPickerMode('start')}>
-                <Text style={{ marginRight: 8, fontSize: 16 }}>📅</Text>
-                <Text style={taskForm.startDate ? styles.dateText : styles.datePlaceholder}>
-                  {taskForm.startDate ? formatDate(taskForm.startDate) : 'Start Date'}
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.dateInput, { flex: 1, marginLeft: 5, flexDirection: 'row', alignItems: 'center' }]} onPress={() => setPickerMode('due')}>
-                <Text style={{ marginRight: 8, fontSize: 16 }}>🏁</Text>
-                <Text style={taskForm.dueDate ? styles.dateText : styles.datePlaceholder}>
-                  {taskForm.dueDate ? formatDate(taskForm.dueDate) : 'Deadline'}
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            {pickerMode && (
-              <View style={{ backgroundColor: '#1e1e1e', padding: 12, borderRadius: 12, marginVertical: 10, borderWidth: 1, borderColor: '#333', elevation: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 5 }}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, borderBottomWidth: 1, borderBottomColor: '#333', paddingBottom: 8 }}>
-                  <Text style={{ fontWeight: 'bold', color: '#81c784', fontSize: 15 }}>{pickerMode === 'start' ? '📅 Set Start Date' : '🏁 Set Deadline'}</Text>
-                  <TouchableOpacity onPress={() => setPickerMode(null)} style={{ backgroundColor: '#2e7d32', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6 }}>
-                    <Text style={{ color: '#fff', fontWeight: 'bold' }}>Done</Text>
-                  </TouchableOpacity>
-                </View>
-                <DateTimePicker
-                  value={taskForm[pickerMode === 'start' ? 'startDate' : 'dueDate'] || new Date()}
-                  mode="date"
-                  display={Platform.OS === 'ios' ? 'inline' : 'default'}
-                  minimumDate={pickerMode === 'due' ? new Date(new Date().setHours(0, 0, 0, 0) + 86400000) : undefined}
-                  style={{ height: Platform.OS === 'ios' ? 320 : undefined }}
-                  textColor="#ffffff"
-                  accentColor="#4caf50"
-                  themeVariant="dark"
-                  onChange={(e, val) => {
-                    if (Platform.OS === 'android') {
-                      setPickerMode(null);
-                    }
-                    if (val) {
-                      if (pickerMode === 'start') setTaskForm(prev => ({ ...prev, startDate: val }));
-                      if (pickerMode === 'due') setTaskForm(prev => ({ ...prev, dueDate: val }));
-                    }
-                  }}
-                />
               </View>
-            )}
 
-            <Text style={styles.label}>Priority</Text>
-            <View style={styles.priorityContainer}>
-              {['low', 'medium', 'high', 'urgent'].map((priority) => (
-                <TouchableOpacity key={priority} style={[styles.priorityOption, taskForm.priority === priority && { backgroundColor: getPriorityStyle(priority).bg }]} onPress={() => setTaskForm({ ...taskForm, priority })}>
-                  <Text style={[styles.priorityOptionText, taskForm.priority === priority && styles.priorityOptionTextSelected]}>{getPriorityStyle(priority).text}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            {taskForm.landId && (
-              <>
-                <Text style={styles.label}>Materials & Inventory Reference</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.inventoryPicker}>
-                  {inventory.filter(i => (i.landId?._id || i.landId) === taskForm.landId).length === 0 ? (
-                    <Text style={{ color: '#666', fontStyle: 'italic', paddingVertical: 8 }}>No inventory available for this land plot.</Text>
-                  ) : inventory.filter(i => (i.landId?._id || i.landId) === taskForm.landId).map(invItem => (
-                    <TouchableOpacity key={invItem._id} style={styles.invBadge} onPress={() => handleAddMaterial(invItem)}>
-                      <Text style={styles.invBadgeText}>+ {invItem.name}</Text>
+              {pickerMode && (
+                <View style={styles.datePickerContainer}>
+                  <View style={styles.datePickerHeader}>
+                    <Text style={styles.datePickerTitle}>{pickerMode === 'start' ? 'Set Start Date' : 'Set Deadline'}</Text>
+                    <TouchableOpacity onPress={() => setPickerMode(null)} style={styles.datePickerDone}>
+                      <Text style={styles.datePickerDoneText}>Done</Text>
                     </TouchableOpacity>
-                  ))}
-                </ScrollView>
+                  </View>
+                  <DateTimePicker
+                    value={taskForm[pickerMode === 'start' ? 'startDate' : 'dueDate'] || new Date()}
+                    mode="date"
+                    display={Platform.OS === 'ios' ? 'inline' : 'default'}
+                    minimumDate={pickerMode === 'due' ? new Date(new Date().setHours(0, 0, 0, 0) + 86400000) : undefined}
+                    style={{ height: Platform.OS === 'ios' ? 320 : undefined }}
+                    accentColor={colors.primary}
+                    onChange={(e, val) => {
+                      if (Platform.OS === 'android') setPickerMode(null);
+                      if (val) {
+                        if (pickerMode === 'start') setTaskForm(prev => ({ ...prev, startDate: val }));
+                        if (pickerMode === 'due') setTaskForm(prev => ({ ...prev, dueDate: val }));
+                      }
+                    }}
+                  />
+                </View>
+              )}
 
-                {taskForm.materialsUsed.map((mat, idx) => {
-                  const invItem = inventory.find(i => i._id === mat.inventoryId);
+              <Text style={styles.inputLabel}>Priority</Text>
+              <View style={styles.priorityOptions}>
+                {['low', 'medium', 'high', 'urgent'].map((priority) => {
+                  const pStyle = getPriorityStyle(priority);
                   return (
-                    <View key={idx} style={styles.materialFormRow}>
-                      <Text style={styles.materialFormName}>{invItem?.name || mat.name}</Text>
-                      <TextInput
-                        style={styles.materialInput}
-                        keyboardType="numeric"
-                        value={mat.quantity.toString()}
-                        onChangeText={(txt) => handleUpdateMaterialQty(mat.inventoryId, txt)}
-                      />
-                      <Text style={styles.materialUnit}>{invItem?.unit || mat.unit}</Text>
-                      <TouchableOpacity onPress={() => handleRemoveMaterial(mat.inventoryId)}>
-                        <Text style={{ color: 'red', fontSize: 20, marginLeft: 10 }}>✖</Text>
-                      </TouchableOpacity>
-                    </View>
+                    <TouchableOpacity 
+                      key={priority} 
+                      style={[styles.priorityOption, taskForm.priority === priority && { backgroundColor: pStyle.bg }]} 
+                      onPress={() => setTaskForm({ ...taskForm, priority })}
+                    >
+                      <Text style={[styles.priorityOptionText, taskForm.priority === priority && styles.priorityOptionTextSelected]}>
+                        {pStyle.text}
+                      </Text>
+                    </TouchableOpacity>
                   );
                 })}
+              </View>
 
-                <Text style={styles.label}>Machinery / Equipment</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.inventoryPicker}>
-                  {machinery.filter(m => (m.landId?._id || m.landId) === taskForm.landId).length === 0 ? (
-                    <Text style={{ color: '#666', fontStyle: 'italic', paddingVertical: 8 }}>No machinery assigned to this land plot.</Text>
-                  ) : machinery.filter(m => (m.landId?._id || m.landId) === taskForm.landId).map(machItem => (
-                    <TouchableOpacity key={machItem._id} style={styles.invBadge} onPress={() => handleAddMachinery(machItem)}>
-                      <Text style={styles.invBadgeText}>+ {machItem.name}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-
-                {taskForm.machineryUsed.map((mat, idx) => {
-                  const machItem = machinery.find(i => i._id === mat.machineryId);
-                  return (
-                    <View key={idx} style={styles.materialFormRow}>
-                      <Text style={styles.materialFormName}>{machItem?.name || mat.name}</Text>
-                      <TouchableOpacity onPress={() => handleRemoveMachinery(mat.machineryId)}>
-                        <Text style={{ color: 'red', fontSize: 20, marginLeft: 10 }}>✖</Text>
+              {taskForm.landId && (
+                <>
+                  <Text style={styles.inputLabel}>Materials</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.optionScroll}>
+                    {inventory.filter(i => (i.landId?._id || i.landId) === taskForm.landId).length === 0 ? (
+                      <Text style={styles.emptyOptionText}>No inventory on this land</Text>
+                    ) : inventory.filter(i => (i.landId?._id || i.landId) === taskForm.landId).map(invItem => (
+                      <TouchableOpacity key={invItem._id} style={styles.addResourceChip} onPress={() => handleAddMaterial(invItem)}>
+                        <Text style={styles.addResourceChipText}>+ {invItem.name}</Text>
                       </TouchableOpacity>
-                    </View>
-                  );
-                })}
-              </>
-            )}
+                    ))}
+                  </ScrollView>
 
-            <Text style={styles.label}>📝 Short Notes / Scouting Report</Text>
-            <TextInput placeholderTextColor="#666" style={[styles.input, styles.textArea]} placeholder="Add any observational notes, issues spotted, or material usage anomalies..." multiline numberOfLines={3} value={taskForm.notes} onChangeText={(text) => handleTextChange('notes', text)} />
+                  {taskForm.materialsUsed.map((mat, idx) => {
+                    const invItem = inventory.find(i => i._id === mat.inventoryId);
+                    return (
+                      <View key={idx} style={styles.resourceRow}>
+                        <Text style={styles.resourceName}>{invItem?.name || mat.name}</Text>
+                        <TextInput
+                          style={styles.resourceInput}
+                          keyboardType="numeric"
+                          value={mat.quantity.toString()}
+                          onChangeText={(txt) => handleUpdateMaterialQty(mat.inventoryId, txt)}
+                        />
+                        <Text style={styles.resourceUnit}>{invItem?.unit || mat.unit}</Text>
+                        <TouchableOpacity onPress={() => handleRemoveMaterial(mat.inventoryId)}>
+                          <Text style={styles.removeBtn}>✕</Text>
+                        </TouchableOpacity>
+                      </View>
+                    );
+                  })}
 
-            <View style={styles.modalButtons}>
-              <TouchableOpacity style={[styles.button, styles.saveButton]} onPress={editingItem ? updateTask : createTask}>
-                <Text style={styles.buttonText}>{editingItem ? 'Save Updates' : 'Create Task'}</Text>
+                  <Text style={styles.inputLabel}>Equipment</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.optionScroll}>
+                    {machinery.filter(m => (m.landId?._id || m.landId) === taskForm.landId).length === 0 ? (
+                      <Text style={styles.emptyOptionText}>No equipment on this land</Text>
+                    ) : machinery.filter(m => (m.landId?._id || m.landId) === taskForm.landId).map(machItem => (
+                      <TouchableOpacity key={machItem._id} style={styles.addResourceChip} onPress={() => handleAddMachinery(machItem)}>
+                        <Text style={styles.addResourceChipText}>+ {machItem.name}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+
+                  {taskForm.machineryUsed.map((mat, idx) => {
+                    const machItem = machinery.find(i => i._id === mat.machineryId);
+                    return (
+                      <View key={idx} style={styles.resourceRow}>
+                        <Text style={styles.resourceName}>{machItem?.name || mat.name}</Text>
+                        <TouchableOpacity onPress={() => handleRemoveMachinery(mat.machineryId)}>
+                          <Text style={styles.removeBtn}>✕</Text>
+                        </TouchableOpacity>
+                      </View>
+                    );
+                  })}
+                </>
+              )}
+
+              <Text style={styles.inputLabel}>Notes</Text>
+              <TextInput 
+                placeholderTextColor={colors.textHint}
+                style={[styles.input, styles.textArea]} 
+                placeholder="Add any notes or observations..." 
+                multiline 
+                numberOfLines={3} 
+                value={taskForm.notes} 
+                onChangeText={(text) => handleTextChange('notes', text)} 
+              />
+
+              <TouchableOpacity style={styles.submitBtn} onPress={editingItem ? updateTask : createTask}>
+                <Text style={styles.submitBtnText}>{editingItem ? 'Save Changes' : 'Create Task'}</Text>
               </TouchableOpacity>
-            </View>
-            <View style={{ height: 20 }} />
-          </ScrollView>
+              
+              <View style={{ height: 40 }} />
+            </ScrollView>
+          </View>
         </View>
       </Modal>
     </View>
@@ -797,106 +918,623 @@ export default function TaskScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f5f5f5' },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  container: { 
+    flex: 1, 
+    backgroundColor: colors.background,
+  },
+  loadingContainer: { 
+    flex: 1, 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    backgroundColor: colors.background,
+  },
+  loadingText: {
+    marginTop: spacing.md,
+    ...typography.body,
+    color: colors.textSecondary,
+  },
 
-  filterContainer: { backgroundColor: '#fff', paddingTop: 10, paddingBottom: 5, paddingHorizontal: 10, elevation: 2 },
-  filterBtn: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: '#e0e0e0', marginRight: 8 },
-  filterBtnActive: { backgroundColor: '#2e7d32' },
-  filterText: { fontSize: 13, color: '#333', fontWeight: 'bold' },
-  filterTextActive: { color: '#fff' },
+  // Filter Section
+  filterSection: { 
+    backgroundColor: colors.cardBackground, 
+    paddingTop: spacing.md, 
+    paddingBottom: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.mediumGray,
+  },
+  filterScroll: {
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.sm,
+  },
+  filterTab: { 
+    paddingHorizontal: spacing.lg, 
+    paddingVertical: spacing.sm, 
+    borderRadius: borderRadius.round, 
+    backgroundColor: colors.lightGray, 
+    marginRight: spacing.sm,
+  },
+  filterTabActive: { 
+    backgroundColor: colors.primary,
+  },
+  filterTabText: { 
+    ...typography.buttonSmall,
+    color: colors.textSecondary,
+  },
+  filterTabTextActive: { 
+    color: colors.textLight,
+  },
 
-  subFilterRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 5 },
-  subFilterLabel: { fontSize: 12, fontWeight: 'bold', color: '#666', width: 50 },
-  subFilterBtn: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: 15, backgroundColor: '#f0f0f0', marginRight: 5 },
-  subFilterBtnActive: { backgroundColor: '#c8e6c9' },
-  subFilterText: { fontSize: 11, color: '#333' },
-  subFilterTextActive: { color: '#2e7d32', fontWeight: 'bold' },
+  subFilter: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    paddingHorizontal: spacing.md,
+    marginTop: spacing.xs,
+  },
+  subFilterLabel: { 
+    ...typography.caption,
+    color: colors.textTertiary,
+    width: 50,
+  },
+  subFilterChip: { 
+    paddingHorizontal: spacing.md, 
+    paddingVertical: spacing.xs, 
+    borderRadius: borderRadius.round, 
+    backgroundColor: colors.backgroundAlt, 
+    marginRight: spacing.xs,
+  },
+  subFilterChipActive: { 
+    backgroundColor: colors.primaryMuted,
+  },
+  subFilterChipText: { 
+    ...typography.caption,
+    color: colors.textSecondary,
+  },
+  subFilterChipTextActive: { 
+    color: colors.primary,
+    fontWeight: '600',
+  },
 
-  card: { backgroundColor: '#fff', marginHorizontal: 10, marginVertical: 6, padding: 15, borderRadius: 12, elevation: 2 },
-  overdueCard: { borderWidth: 2, borderColor: '#d32f2f', backgroundColor: '#ffebee' },
-  taskHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 },
-  taskTitle: { fontSize: 16, fontWeight: 'bold', color: '#333', flex: 1 },
-  taskHeaderRight: { flexDirection: 'row', alignItems: 'center' },
+  // List
+  listContent: {
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.md,
+    paddingBottom: 100,
+  },
 
-  priorityBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 },
-  priorityText: { color: '#fff', fontSize: 10, fontWeight: 'bold' },
-  statusBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 },
-  statusText: { fontSize: 10, fontWeight: 'bold' },
+  // Card
+  card: { 
+    backgroundColor: colors.cardBackground, 
+    marginBottom: spacing.md, 
+    padding: spacing.lg, 
+    borderRadius: borderRadius.lg,
+    ...shadows.sm,
+  },
+  overdueCard: { 
+    borderWidth: 2, 
+    borderColor: colors.error, 
+    backgroundColor: colors.errorLight,
+  },
+  cardHeader: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'flex-start',
+    marginBottom: spacing.sm,
+  },
+  cardTitleSection: {
+    flex: 1,
+    marginRight: spacing.sm,
+  },
+  taskTitle: { 
+    ...typography.h4,
+    color: colors.textPrimary,
+  },
+  overdueBadge: {
+    backgroundColor: colors.error,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: borderRadius.xs,
+    marginTop: spacing.xs,
+    alignSelf: 'flex-start',
+  },
+  overdueText: {
+    ...typography.overline,
+    color: colors.textLight,
+    fontSize: 9,
+  },
+  badgeContainer: {
+    flexDirection: 'row',
+  },
+  priorityBadge: { 
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.sm, 
+    paddingVertical: spacing.xs, 
+    borderRadius: borderRadius.round,
+  },
+  priorityDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginRight: spacing.xs,
+  },
+  priorityText: { 
+    ...typography.caption,
+    fontWeight: '600',
+  },
+  statusChip: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.sm,
+    marginBottom: spacing.sm,
+  },
+  statusText: {
+    ...typography.caption,
+    fontWeight: '600',
+  },
+  taskDesc: { 
+    ...typography.body,
+    color: colors.textSecondary,
+    marginBottom: spacing.md,
+  },
 
-  taskDesc: { fontSize: 14, color: '#666', marginTop: 2, marginBottom: 8 },
-  overdueBadge: { color: '#d32f2f', fontWeight: 'bold', fontSize: 12, marginVertical: 3 },
+  // Meta
+  metaContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginBottom: spacing.sm,
+  },
+  metaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.backgroundAlt,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.sm,
+    marginRight: spacing.sm,
+    marginBottom: spacing.xs,
+  },
+  metaIcon: {
+    fontSize: 12,
+    marginRight: spacing.xs,
+  },
+  metaText: {
+    ...typography.caption,
+    color: colors.textSecondary,
+  },
 
-  metaRowContainer: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 5 },
-  metaBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f0f0f0', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, marginRight: 10, marginBottom: 5 },
-  metaIcon: { fontSize: 12, marginRight: 4 },
-  taskMeta: { fontSize: 12, color: '#555', fontWeight: 'bold' },
+  // Notes
+  notesSection: {
+    backgroundColor: colors.warningLight,
+    padding: spacing.md,
+    borderRadius: borderRadius.sm,
+    marginBottom: spacing.md,
+    borderLeftWidth: 3,
+    borderLeftColor: colors.warning,
+  },
+  notesLabel: {
+    ...typography.caption,
+    color: colors.warning,
+    fontWeight: '700',
+    marginBottom: spacing.xs,
+  },
+  notesText: {
+    ...typography.bodySmall,
+    color: colors.textSecondary,
+  },
 
-  notesBox: { backgroundColor: '#fff9c4', padding: 10, borderRadius: 8, marginTop: 5, marginBottom: 5, borderLeftWidth: 3, borderLeftColor: '#fbc02d' },
-  notesTitle: { fontSize: 12, fontWeight: 'bold', color: '#f57f17', marginBottom: 3 },
-  notesText: { fontSize: 13, color: '#424242' },
+  // Resources
+  resourceSection: {
+    marginBottom: spacing.md,
+  },
+  resourceLabel: {
+    ...typography.caption,
+    color: colors.textTertiary,
+    marginBottom: spacing.xs,
+  },
+  resourceChips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  resourceChip: {
+    backgroundColor: colors.primaryMuted,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.sm,
+    marginRight: spacing.xs,
+    marginBottom: spacing.xs,
+  },
+  resourceChipText: {
+    ...typography.caption,
+    color: colors.primary,
+  },
 
-  materialsBox: { marginTop: 10, padding: 10, backgroundColor: '#f9f9f9', borderRadius: 8, borderWidth: 1, borderColor: '#eee' },
-  materialsHeader: { fontSize: 12, fontWeight: 'bold', color: '#2e7d32', marginBottom: 5 },
-  materialItemText: { fontSize: 12, color: '#555', marginLeft: 5 },
+  // Progress
+  progressSection: {
+    marginBottom: spacing.md,
+  },
+  progressHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.xs,
+  },
+  progressLabel: {
+    ...typography.caption,
+    color: colors.textTertiary,
+  },
+  progressValue: {
+    ...typography.caption,
+    color: colors.primary,
+    fontWeight: '700',
+  },
+  progressBarBg: {
+    height: 6,
+    backgroundColor: colors.lightGray,
+    borderRadius: borderRadius.xs,
+    overflow: 'hidden',
+  },
+  progressBarFill: {
+    height: '100%',
+    backgroundColor: colors.primary,
+    borderRadius: borderRadius.xs,
+  },
 
-  progressSection: { marginTop: 15 },
-  progressLabel: { fontSize: 12, color: '#666', marginBottom: 5, fontWeight: 'bold' },
-  progressBarContainer: { height: 6, backgroundColor: '#e0e0e0', borderRadius: 4, overflow: 'hidden' },
-  progressBarFill: { height: '100%', backgroundColor: '#2196f3' },
+  // Actions
+  cardActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    paddingTop: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.lightGray,
+  },
+  actionBtn: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.sm,
+    marginLeft: spacing.sm,
+  },
+  completeBtn: {
+    backgroundColor: colors.successLight,
+  },
+  completeBtnText: {
+    ...typography.buttonSmall,
+    color: colors.success,
+  },
+  editBtn: {
+    backgroundColor: colors.infoLight,
+  },
+  editBtnText: {
+    ...typography.buttonSmall,
+    color: colors.info,
+  },
+  deleteBtn: {
+    backgroundColor: colors.errorLight,
+  },
+  deleteBtnText: {
+    ...typography.buttonSmall,
+    color: colors.error,
+  },
 
-  cardActions: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 15, borderTopWidth: 1, borderTopColor: '#f0f0f0', paddingTop: 10 },
-  actionBtnOutline: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6, borderWidth: 1, borderColor: '#bbb', marginLeft: 8 },
-  btnOutlineText: { fontSize: 12, color: '#555', fontWeight: '600' },
+  // Empty
+  emptyContainer: { 
+    alignItems: 'center', 
+    marginTop: 80,
+  },
+  emptyIconBg: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: colors.primaryMuted,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: spacing.lg,
+  },
+  emptyIcon: { 
+    fontSize: 36,
+    color: colors.primary,
+  },
+  emptyTitle: { 
+    ...typography.h4,
+    color: colors.textPrimary,
+    marginBottom: spacing.xs,
+  },
+  emptySubtitle: { 
+    ...typography.body,
+    color: colors.textTertiary,
+  },
 
-  emptyContainer: { alignItems: 'center', marginTop: 100 },
-  emptyIcon: { fontSize: 60, marginBottom: 20 },
-  emptyText: { fontSize: 16, color: '#999' },
+  // FAB
+  fab: { 
+    position: 'absolute', 
+    bottom: 24, 
+    right: 24, 
+    backgroundColor: colors.primary, 
+    width: 60, 
+    height: 60, 
+    borderRadius: 30, 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    ...shadows.lg,
+  },
+  fabIcon: { 
+    fontSize: 32, 
+    color: colors.textLight,
+    marginTop: -2,
+  },
 
-  fab: { position: 'absolute', bottom: 20, right: 20, backgroundColor: '#2e7d32', width: 56, height: 56, borderRadius: 28, justifyContent: 'center', alignItems: 'center', elevation: 5 },
-  fabText: { fontSize: 32, color: '#fff' },
+  // Modal
+  modalOverlay: { 
+    flex: 1, 
+    backgroundColor: colors.overlay,
+  },
+  modalContainer: { 
+    flex: 1, 
+    marginTop: Platform.OS === 'ios' ? 60 : 30,
+    backgroundColor: colors.cardBackground, 
+    borderTopLeftRadius: borderRadius.xl, 
+    borderTopRightRadius: borderRadius.xl,
+  },
+  modalHeader: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center',
+    padding: spacing.lg,
+    borderBottomWidth: 1, 
+    borderBottomColor: colors.lightGray,
+  },
+  modalTitle: { 
+    ...typography.h3,
+    color: colors.textPrimary,
+  },
+  modalCloseBtn: {
+    padding: spacing.sm,
+  },
+  modalCloseBtnText: {
+    fontSize: 20,
+    color: colors.textTertiary,
+  },
+  modalContent: { 
+    padding: spacing.lg,
+  },
 
-  modalContainer: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)', paddingTop: Platform.OS === 'ios' ? 60 : 30 },
-  modalHeader: { backgroundColor: '#fff', padding: 20, borderTopLeftRadius: 20, borderTopRightRadius: 20, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#eee' },
-  modalTitle: { fontSize: 20, fontWeight: 'bold', color: '#2e7d32' },
-  closeBtn: { fontSize: 24, color: '#999', fontWeight: 'bold' },
-  modalContent: { backgroundColor: '#fff', padding: 20 },
+  // Form
+  inputLabel: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginBottom: spacing.xs,
+    marginTop: spacing.md,
+  },
+  input: { 
+    borderWidth: 1, 
+    borderColor: colors.mediumGray, 
+    backgroundColor: colors.inputBackground,
+    padding: spacing.md, 
+    borderRadius: borderRadius.md, 
+    ...typography.body,
+    color: colors.textPrimary,
+  },
+  textArea: {
+    minHeight: 80,
+    textAlignVertical: 'top',
+  },
+  hintText: {
+    ...typography.bodySmall,
+    color: colors.warning,
+    fontStyle: 'italic',
+    marginTop: spacing.sm,
+  },
 
-  input: { borderWidth: 1, borderColor: '#ddd', padding: 12, borderRadius: 8, marginBottom: 12, fontSize: 14, color: '#212121', backgroundColor: '#fafafa' },
-  textArea: { height: 80, textAlignVertical: 'top' },
-  label: { fontSize: 13, fontWeight: 'bold', color: '#444', marginBottom: 8, marginTop: 4 },
+  optionScroll: {
+    marginVertical: spacing.sm,
+  },
+  optionChip: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.round,
+    backgroundColor: colors.lightGray,
+    marginRight: spacing.sm,
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  optionChipSelected: {
+    backgroundColor: colors.primaryMuted,
+    borderColor: colors.primary,
+  },
+  optionChipText: {
+    ...typography.buttonSmall,
+    color: colors.textSecondary,
+  },
+  optionChipTextSelected: {
+    color: colors.primary,
+  },
+  emptyOptionText: {
+    ...typography.bodySmall,
+    color: colors.textHint,
+    fontStyle: 'italic',
+  },
 
-  employeeContainer: { flexDirection: 'row', marginBottom: 12 },
-  employeeOption: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, backgroundColor: '#f0f0f0', marginRight: 8, height: 35, justifyContent: 'center' },
-  employeeOptionSelected: { backgroundColor: '#2e7d32' },
-  employeeName: { fontSize: 12, color: '#333' },
-  employeeNameSelected: { color: '#fff', fontWeight: 'bold' },
+  statusOptions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginTop: spacing.sm,
+  },
+  statusOption: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.sm,
+    backgroundColor: colors.lightGray,
+    marginRight: spacing.sm,
+    marginBottom: spacing.sm,
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  statusOptionText: {
+    ...typography.buttonSmall,
+    color: colors.textSecondary,
+  },
 
-  progressSelectorRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 15 },
-  progressTick: { flex: 1, padding: 8, backgroundColor: '#f0f0f0', marginHorizontal: 3, borderRadius: 6, alignItems: 'center' },
-  progressTickActive: { backgroundColor: '#2196f3' },
-  progressTickText: { fontSize: 12, fontWeight: 'bold', color: '#333' },
-  progressTickTextActive: { color: '#fff' },
+  progressOptions: {
+    flexDirection: 'row',
+    marginTop: spacing.sm,
+  },
+  progressOption: {
+    flex: 1,
+    paddingVertical: spacing.sm,
+    alignItems: 'center',
+    backgroundColor: colors.lightGray,
+    marginRight: spacing.xs,
+    borderRadius: borderRadius.sm,
+  },
+  progressOptionSelected: {
+    backgroundColor: colors.primary,
+  },
+  progressOptionText: {
+    ...typography.buttonSmall,
+    color: colors.textSecondary,
+  },
+  progressOptionTextSelected: {
+    color: colors.textLight,
+  },
 
-  inventoryPicker: { flexDirection: 'row', marginBottom: 10 },
-  invBadge: { paddingHorizontal: 15, paddingVertical: 8, backgroundColor: '#e8f5e9', borderRadius: 20, marginRight: 8, borderWidth: 1, borderColor: '#81c784' },
-  invBadgeText: { color: '#2e7d32', fontWeight: 'bold', fontSize: 12 },
-  materialFormRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10, padding: 10, backgroundColor: '#f5f5f5', borderRadius: 8 },
-  materialFormName: { flex: 1, fontWeight: 'bold', fontSize: 13, color: '#333' },
-  materialInput: { width: 50, height: 36, backgroundColor: '#fff', borderWidth: 1, borderColor: '#ccc', borderRadius: 5, textAlign: 'center', color: '#000' },
-  materialUnit: { width: 40, marginLeft: 10, color: '#666', fontSize: 12 },
+  dateRow: {
+    flexDirection: 'row',
+    marginTop: spacing.sm,
+  },
+  dateInput: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.mediumGray,
+    backgroundColor: colors.inputBackground,
+    padding: spacing.md,
+    borderRadius: borderRadius.md,
+    marginRight: spacing.sm,
+  },
+  dateIcon: {
+    fontSize: 16,
+    marginRight: spacing.sm,
+  },
+  dateText: {
+    ...typography.body,
+    color: colors.textPrimary,
+  },
+  datePlaceholder: {
+    ...typography.body,
+    color: colors.textHint,
+  },
 
-  priorityContainer: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 12 },
-  priorityOption: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, backgroundColor: '#f0f0f0', marginRight: 6, marginBottom: 6 },
-  priorityOptionText: { fontSize: 12, color: '#444' },
-  priorityOptionTextSelected: { color: '#fff', fontWeight: 'bold' },
+  datePickerContainer: {
+    backgroundColor: colors.charcoal,
+    padding: spacing.md,
+    borderRadius: borderRadius.md,
+    marginTop: spacing.md,
+  },
+  datePickerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+    paddingBottom: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.darkGray,
+  },
+  datePickerTitle: {
+    ...typography.h5,
+    color: colors.leaf,
+  },
+  datePickerDone: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.sm,
+  },
+  datePickerDoneText: {
+    ...typography.buttonSmall,
+    color: colors.textLight,
+  },
 
-  dateInput: { borderWidth: 1, borderColor: '#ddd', padding: 12, borderRadius: 8, marginBottom: 12, backgroundColor: '#fafafa' },
-  dateText: { fontSize: 13, color: '#333' },
-  datePlaceholder: { fontSize: 13, color: '#999' },
+  priorityOptions: {
+    flexDirection: 'row',
+    marginTop: spacing.sm,
+  },
+  priorityOption: {
+    flex: 1,
+    paddingVertical: spacing.sm,
+    alignItems: 'center',
+    backgroundColor: colors.lightGray,
+    marginRight: spacing.xs,
+    borderRadius: borderRadius.sm,
+  },
+  priorityOptionText: {
+    ...typography.buttonSmall,
+    color: colors.textSecondary,
+  },
+  priorityOptionTextSelected: {
+    color: colors.textLight,
+  },
 
-  modalButtons: { marginTop: 20 },
-  button: { padding: 16, borderRadius: 10, alignItems: 'center' },
-  saveButton: { backgroundColor: '#2e7d32', elevation: 2 },
-  buttonText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
+  addResourceChip: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.round,
+    backgroundColor: colors.primaryMuted,
+    marginRight: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    borderStyle: 'dashed',
+  },
+  addResourceChipText: {
+    ...typography.buttonSmall,
+    color: colors.primary,
+  },
+
+  resourceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.backgroundAlt,
+    padding: spacing.md,
+    borderRadius: borderRadius.sm,
+    marginTop: spacing.sm,
+  },
+  resourceName: {
+    flex: 1,
+    ...typography.body,
+    color: colors.textPrimary,
+  },
+  resourceInput: {
+    width: 60,
+    borderWidth: 1,
+    borderColor: colors.mediumGray,
+    backgroundColor: colors.inputBackground,
+    padding: spacing.sm,
+    borderRadius: borderRadius.sm,
+    textAlign: 'center',
+    ...typography.body,
+    color: colors.textPrimary,
+  },
+  resourceUnit: {
+    ...typography.caption,
+    color: colors.textTertiary,
+    marginLeft: spacing.sm,
+    marginRight: spacing.sm,
+  },
+  removeBtn: {
+    fontSize: 18,
+    color: colors.error,
+    padding: spacing.xs,
+  },
+
+  submitBtn: {
+    backgroundColor: colors.primary,
+    padding: spacing.lg,
+    borderRadius: borderRadius.md,
+    alignItems: 'center',
+    marginTop: spacing.xl,
+  },
+  submitBtnText: {
+    ...typography.button,
+    color: colors.textLight,
+  },
 });
