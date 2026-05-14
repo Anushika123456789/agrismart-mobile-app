@@ -8,7 +8,7 @@ AgriSmart is a complete agricultural management mobile application built to digi
 
 ## Project Links & Deployment Details
 - **GitHub Repository:** https://github.com/Anushika123456789/agrismart-mobile-app
-- **Backend URL:** (If deployed, add your backend URL here)
+- **Backend URL:** https://agrismart-mobile-app-jdey.vercel.app
 
 ## Technology Stack
 
